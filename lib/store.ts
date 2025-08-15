@@ -1,7 +1,22 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
-type PatternType = "waves" | "dots" | "stripes" | "zigzag" | "graphpaper" | "none"
+type PatternType = "waves" | "dots" | "stripes" | "zigzag" | "graphpaper" | "gradientwaves" | "none"
+
+type GradientWavesConfig = {
+  lines: number
+  amplitudeX: number
+  amplitudeY: number
+  offsetX: number
+  smoothness: number
+  crazyness: boolean
+  hueStart: number
+  saturationStart: number
+  lightnessStart: number
+  hueEnd: number
+  saturationEnd: number
+  lightnessEnd: number
+}
 
 type Options = {
   aspectRatio: string
@@ -20,6 +35,7 @@ type Options = {
     type: PatternType
   }
   frame: "none" | "arc" | "stack"
+  gradientWaves: GradientWavesConfig
 }
 
 type PresetSettings = {
@@ -40,22 +56,37 @@ type PresetSettings = {
 }
 
 interface ImageStore {
-  // State
   options: Options
   outlineSize: number
   outlineColor: string
   selectedPreset: string
 
-  // Actions
   updateOptions: (updates: Partial<Options>) => void
   setOutlineSize: (size: number) => void
   setOutlineColor: (color: string) => void
   applyPreset: (presetId: string, settings: PresetSettings) => void
   resetToDefaults: () => void
+  updateGradientWaves: (updates: Partial<GradientWavesConfig>) => void
+  randomizeGradientWaves: () => void
 }
 
 const DEFAULT_OUTLINE_SIZE = 8
 const DEFAULT_OUTLINE_COLOR = "#ffffff"
+
+const DEFAULT_GRADIENT_WAVES: GradientWavesConfig = {
+  lines: 29,
+  amplitudeX: 100,
+  amplitudeY: 20,
+  offsetX: 10,
+  smoothness: 3,
+  crazyness: false,
+  hueStart: 53,
+  saturationStart: 74,
+  lightnessStart: 67,
+  hueEnd: 216,
+  saturationEnd: 100,
+  lightnessEnd: 7,
+}
 
 const DEFAULT_OPTIONS: Options = {
   aspectRatio: "aspect-auto",
@@ -68,34 +99,33 @@ const DEFAULT_OPTIONS: Options = {
   rotation: 0,
   pattern: { enabled: true, intensity: 15, rotation: 0, opacity: 6, type: "stripes" },
   frame: "arc",
+  gradientWaves: DEFAULT_GRADIENT_WAVES,
 }
 
 export const useImageStore = create<ImageStore>()(
   persist(
     (set, get) => ({
-      // Initial state
       options: DEFAULT_OPTIONS,
       outlineSize: DEFAULT_OUTLINE_SIZE,
       outlineColor: DEFAULT_OUTLINE_COLOR,
       selectedPreset: "",
 
-      // Actions
       updateOptions: (updates) =>
         set((state) => ({
           options: { ...state.options, ...updates },
-          selectedPreset: "", // Clear preset selection when manually adjusting
+          selectedPreset: "",
         })),
 
       setOutlineSize: (size) =>
         set((state) => ({
           outlineSize: size,
-          selectedPreset: "", // Clear preset selection when manually adjusting
+          selectedPreset: "",
         })),
 
       setOutlineColor: (color) =>
         set((state) => ({
           outlineColor: color,
-          selectedPreset: "", // Clear preset selection when manually adjusting
+          selectedPreset: "",
         })),
 
       applyPreset: (presetId, settings) =>
@@ -121,6 +151,37 @@ export const useImageStore = create<ImageStore>()(
           outlineColor: DEFAULT_OUTLINE_COLOR,
           selectedPreset: "",
         })),
+
+      updateGradientWaves: (updates) =>
+        set((state) => ({
+          options: {
+            ...state.options,
+            gradientWaves: { ...state.options.gradientWaves, ...updates },
+          },
+          selectedPreset: "",
+        })),
+
+      randomizeGradientWaves: () =>
+        set((state) => ({
+          options: {
+            ...state.options,
+            gradientWaves: {
+              ...state.options.gradientWaves,
+              lines: Math.floor(Math.random() * 40) + 10,
+              amplitudeX: Math.floor(Math.random() * 150) + 50,
+              amplitudeY: Math.floor(Math.random() * 40) + 10,
+              offsetX: Math.floor(Math.random() * 20),
+              smoothness: Math.floor(Math.random() * 8) + 1,
+              hueStart: Math.floor(Math.random() * 360),
+              saturationStart: Math.floor(Math.random() * 50) + 50,
+              lightnessStart: Math.floor(Math.random() * 40) + 40,
+              hueEnd: Math.floor(Math.random() * 360),
+              saturationEnd: Math.floor(Math.random() * 50) + 50,
+              lightnessEnd: Math.floor(Math.random() * 30) + 10,
+            },
+          },
+          selectedPreset: "",
+        })),
     }),
     {
       name: "image-tool-storage",
@@ -133,4 +194,4 @@ export const useImageStore = create<ImageStore>()(
   ),
 )
 
-export type { Options, PresetSettings }
+export type { Options, PresetSettings, GradientWavesConfig }

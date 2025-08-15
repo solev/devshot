@@ -16,6 +16,7 @@ interface GradientWavesProps {
   lightnessEnd?: number
   opacity?: number
   className?: string
+  crazyness?: boolean
 }
 
 // Simple HSL to RGB conversion
@@ -57,6 +58,7 @@ class WavePath {
   overflow: number
   amplitudeX: number
   amplitudeY: number
+  crazyness: boolean
 
   constructor(
     rootY: number,
@@ -67,6 +69,7 @@ class WavePath {
     overflow: number,
     amplitudeX: number,
     amplitudeY: number,
+    crazyness = false,
   ) {
     this.rootY = rootY
     this.fill = fill
@@ -76,6 +79,7 @@ class WavePath {
     this.overflow = overflow
     this.amplitudeX = amplitudeX
     this.amplitudeY = amplitudeY
+    this.crazyness = crazyness
   }
 
   createRoot() {
@@ -89,7 +93,8 @@ class WavePath {
       upSideDown = !upSideDown
       const value = upSideDown ? 1 : -1
       x += this.amplitudeX
-      const y = this.amplitudeY * value + this.rootY
+      const randomFactor = this.crazyness ? (Math.random() - 0.5) * 0.5 : 0
+      const y = this.amplitudeY * value * (1 + randomFactor) + this.rootY
       this.root.push({ x, y })
     }
 
@@ -102,7 +107,6 @@ class WavePath {
     let d = `M -${this.overflow} ${this.winH + this.overflow}`
     d += ` L ${this.root[0].x} ${this.root[0].y}`
 
-    // Create smooth curves between points
     for (let i = 1; i < this.root.length - 1; i++) {
       const prevPoint = this.root[i - 1]
       const actualPoint = this.root[i]
@@ -117,7 +121,6 @@ class WavePath {
       d += ` C ${x1} ${y1}, ${x2} ${y2}, ${x} ${y}`
     }
 
-    // Close the path
     const lastPoint = this.root[this.root.length - 1]
     d += ` L ${lastPoint.x} ${lastPoint.y}`
     d += ` L ${this.winW + this.overflow} ${this.winH + this.overflow}`
@@ -141,6 +144,7 @@ export default function GradientWaves({
   lightnessEnd = 7,
   opacity = 1,
   className = "",
+  crazyness = false,
 }: GradientWavesProps) {
   const svgRef = useRef<SVGSVGElement>(null)
 
@@ -153,21 +157,27 @@ export default function GradientWaves({
     const winH = rect.height || 600
     const overflow = Math.abs(lines * offsetX)
 
-    // Clear previous paths
     svg.innerHTML = ""
 
-    // Generate colors
     const startColor: [number, number, number] = [hueStart, saturationStart, lightnessStart]
     const endColor: [number, number, number] = [hueEnd, saturationEnd, lightnessEnd]
     const colors = interpolateColors(startColor, endColor, lines + 1)
 
-    // Set background color
     svg.style.backgroundColor = colors[0]
 
-    // Create wave paths
     for (let i = 0; i < lines; i++) {
       const rootY = (winH / lines) * i
-      const wavePath = new WavePath(rootY, colors[i + 1], offsetX * i, winW, winH, overflow, amplitudeX, amplitudeY)
+      const wavePath = new WavePath(
+        rootY,
+        colors[i + 1],
+        offsetX * i,
+        winW,
+        winH,
+        overflow,
+        amplitudeX,
+        amplitudeY,
+        crazyness,
+      )
 
       wavePath.createRoot()
       const pathData = wavePath.createPath(smoothness)
@@ -192,6 +202,7 @@ export default function GradientWaves({
     hueEnd,
     saturationEnd,
     lightnessEnd,
+    crazyness,
   ])
 
   return (

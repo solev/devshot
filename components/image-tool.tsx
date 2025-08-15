@@ -13,6 +13,7 @@ import { useImageStore, type Options } from "@/lib/store"
 import { Grip, ImagePlus } from "lucide-react"
 import { FloatingSuggestionsDock } from "@/components/floating-suggestions-dock"
 import GradientWaves from "./gradient-waves"
+import { GradientWavesConfig } from "./gradient-waves-config"
 
 type PatternType = "waves" | "dots" | "stripes" | "zigzag" | "graphpaper" | "gradientwaves" | "none"
 type ScreenshotBlob = { src: string; w?: number; h?: number }
@@ -416,18 +417,6 @@ export function ImageTool() {
               >
                 {renderBrowserBar()}
 
-                {/* Remove this entire div
-                <div
-                  data-noise
-                  style={{
-                    backgroundImage: 'url("/noise.png")',
-                  }}
-                  className={cn("absolute inset-0 w-full h-full bg-repeat opacity-[0.15]", {
-                    "rounded-t-none": options.browserBar !== "hidden",
-                  })}
-                />
-                */}
-
                 {options.pattern.enabled && options.pattern.type !== "none" && (
                   <div
                     className="w-full h-full absolute inset-0 overflow-hidden"
@@ -440,17 +429,18 @@ export function ImageTool() {
                   >
                     {options.pattern.type === "gradientwaves" ? (
                       <GradientWaves
-                        lines={15}
-                        amplitudeX={100}
-                        amplitudeY={20}
-                        offsetX={10}
-                        smoothness={3}
-                        hueStart={53}
-                        saturationStart={74}
-                        lightnessStart={67}
-                        hueEnd={216}
-                        saturationEnd={100}
-                        lightnessEnd={7}
+                        lines={options.gradientWaves?.lines || 29}
+                        amplitudeX={options.gradientWaves?.amplitudeX || 100}
+                        amplitudeY={options.gradientWaves?.amplitudeY || 20}
+                        offsetX={options.gradientWaves?.offsetX || 10}
+                        smoothness={options.gradientWaves?.smoothness || 3}
+                        hueStart={options.gradientWaves?.hueStart || 53}
+                        saturationStart={options.gradientWaves?.saturationStart || 74}
+                        lightnessStart={options.gradientWaves?.lightnessStart || 67}
+                        hueEnd={options.gradientWaves?.hueEnd || 216}
+                        saturationEnd={options.gradientWaves?.saturationEnd || 100}
+                        lightnessEnd={options.gradientWaves?.lightnessEnd || 7}
+                        crazyness={options.gradientWaves?.crazyness || false}
                         opacity={1}
                         className="absolute inset-0"
                       />
@@ -488,20 +478,6 @@ export function ImageTool() {
                       boxShadow: shadowMap[options.shadow],
                     }}
                   >
-                    {/* Remove this entire div
-                    {options.reflection && (
-                      <div
-                        className="pointer-events-none absolute inset-0 z-20"
-                        style={{
-                          background:
-                            "linear-gradient(135deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.08) 40%, rgba(255,255,255,0) 60%)",
-                          borderRadius: `${options.rounded}px`,
-                          mixBlendMode: "screen",
-                        }}
-                      />
-                    )}
-                    */}
-
                     <Frame backgroundColor={outlineColor} borderRadius={options.rounded} type={options.frame}>
                       <div
                         className="relative transition-all ease-in-out"
@@ -837,17 +813,18 @@ export function ImageTool() {
                           <div className="w-full h-full relative">
                             {options.pattern.type === "gradientwaves" ? (
                               <GradientWaves
-                                lines={8}
-                                amplitudeX={60}
-                                amplitudeY={12}
-                                offsetX={6}
-                                smoothness={2}
-                                hueStart={53}
-                                saturationStart={74}
-                                lightnessStart={67}
-                                hueEnd={216}
-                                saturationEnd={100}
-                                lightnessEnd={7}
+                                lines={options.gradientWaves?.lines || 8}
+                                amplitudeX={options.gradientWaves?.amplitudeX || 60}
+                                amplitudeY={options.gradientWaves?.amplitudeY || 12}
+                                offsetX={options.gradientWaves?.offsetX || 6}
+                                smoothness={options.gradientWaves?.smoothness || 2}
+                                hueStart={options.gradientWaves?.hueStart || 53}
+                                saturationStart={options.gradientWaves?.saturationStart || 74}
+                                lightnessStart={options.gradientWaves?.lightnessStart || 67}
+                                hueEnd={options.gradientWaves?.hueEnd || 216}
+                                saturationEnd={options.gradientWaves?.saturationEnd || 100}
+                                lightnessEnd={options.gradientWaves?.lightnessEnd || 7}
+                                crazyness={options.gradientWaves?.crazyness || false}
                                 opacity={0.8}
                               />
                             ) : (
@@ -906,17 +883,18 @@ export function ImageTool() {
                             <div className="w-full h-full relative">
                               {pattern.type === "gradientwaves" ? (
                                 <GradientWaves
-                                  lines={8}
-                                  amplitudeX={60}
-                                  amplitudeY={12}
-                                  offsetX={6}
-                                  smoothness={2}
-                                  hueStart={53}
-                                  saturationStart={74}
-                                  lightnessStart={67}
-                                  hueEnd={216}
-                                  saturationEnd={100}
-                                  lightnessEnd={7}
+                                  lines={options.gradientWaves?.lines || 8}
+                                  amplitudeX={options.gradientWaves?.amplitudeX || 60}
+                                  amplitudeY={options.gradientWaves?.amplitudeY || 12}
+                                  offsetX={options.gradientWaves?.offsetX || 6}
+                                  smoothness={options.gradientWaves?.smoothness || 2}
+                                  hueStart={options.gradientWaves?.hueStart || 53}
+                                  saturationStart={options.gradientWaves?.saturationStart || 74}
+                                  lightnessStart={options.gradientWaves?.lightnessStart || 67}
+                                  hueEnd={options.gradientWaves?.hueEnd || 216}
+                                  saturationEnd={options.gradientWaves?.saturationEnd || 100}
+                                  lightnessEnd={options.gradientWaves?.lightnessEnd || 7}
+                                  crazyness={options.gradientWaves?.crazyness || false}
                                   opacity={0.8}
                                 />
                               ) : (
@@ -940,6 +918,11 @@ export function ImageTool() {
                     ))}
                   </div>
                   <div className="mt-4 space-y-3">
+                    {options.pattern.type === "gradientwaves" && options.pattern.enabled && (
+                      <div className="flex justify-center">
+                        <GradientWavesConfig />
+                      </div>
+                    )}
                     <EnhancedSlider
                       disabled={options.pattern.type === "none"}
                       label="Size"
@@ -1101,6 +1084,26 @@ export function ImageTool() {
             </div>
           </div>
         </div>
+
+        {options.pattern.enabled && options.pattern.type === "gradientwaves" && (
+          <div className="absolute inset-0 overflow-hidden">
+            <GradientWaves
+              lines={options.gradientWaves?.lines || 29}
+              amplitudeX={options.gradientWaves?.amplitudeX || 100}
+              amplitudeY={options.gradientWaves?.amplitudeY || 20}
+              offsetX={options.gradientWaves?.offsetX || 10}
+              smoothness={options.gradientWaves?.smoothness || 3}
+              hueStart={options.gradientWaves?.hueStart || 53}
+              saturationStart={options.gradientWaves?.saturationStart || 74}
+              lightnessStart={options.gradientWaves?.lightnessStart || 67}
+              hueEnd={options.gradientWaves?.hueEnd || 216}
+              saturationEnd={options.gradientWaves?.saturationEnd || 100}
+              lightnessEnd={options.gradientWaves?.lightnessEnd || 7}
+              crazyness={options.gradientWaves?.crazyness || false}
+              opacity={options.pattern.opacity / 35}
+            />
+          </div>
+        )}
 
         {/* Floating Suggestions Dock */}
         <FloatingSuggestionsDock imageElement={imageElement} isVisible={Boolean(blob.src)} />
