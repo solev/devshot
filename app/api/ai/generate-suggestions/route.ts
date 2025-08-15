@@ -36,11 +36,10 @@ Return as valid JSON array with this exact structure:
 `
 
     const { text, usage } = await generateText({
-      model: getAzureModel(),
+      model: getAzureModel("gpt-5-mini"),
       system:
         "You are an expert designer. Generate styling suggestions as valid JSON only, no additional text or markdown formatting.",
       prompt,
-      maxTokens: 1500,
       temperature: 0.8,
     })
 

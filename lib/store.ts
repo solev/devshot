@@ -70,67 +70,55 @@ const DEFAULT_OPTIONS: Options = {
   frame: "arc",
 }
 
-export const useImageStore = create<ImageStore>()(
-  persist(
-    (set, get) => ({
-      // Initial state
+export const useImageStore = create<ImageStore>()((set, get) => ({
+  // Initial state
+  options: DEFAULT_OPTIONS,
+  outlineSize: DEFAULT_OUTLINE_SIZE,
+  outlineColor: DEFAULT_OUTLINE_COLOR,
+  selectedPreset: "",
+
+  // Actions
+  updateOptions: (updates) =>
+    set((state) => ({
+      options: { ...state.options, ...updates },
+      selectedPreset: "", // Clear preset selection when manually adjusting
+    })),
+
+  setOutlineSize: (size) =>
+    set((state) => ({
+      outlineSize: size,
+      selectedPreset: "", // Clear preset selection when manually adjusting
+    })),
+
+  setOutlineColor: (color) =>
+    set((state) => ({
+      outlineColor: color,
+      selectedPreset: "", // Clear preset selection when manually adjusting
+    })),
+
+  applyPreset: (presetId, settings) =>
+    set(() => ({
+      options: {
+        ...get().options,
+        theme: settings.theme,
+        screenshotScale: settings.screenshotScale,
+        rounded: settings.rounded,
+        shadow: settings.shadow,
+        frame: settings.frame,
+        pattern: settings.pattern,
+        browserBar: settings.browserBar,
+      },
+      outlineSize: settings.outlineSize,
+      selectedPreset: presetId,
+    })),
+
+  resetToDefaults: () =>
+    set(() => ({
       options: DEFAULT_OPTIONS,
       outlineSize: DEFAULT_OUTLINE_SIZE,
       outlineColor: DEFAULT_OUTLINE_COLOR,
       selectedPreset: "",
-
-      // Actions
-      updateOptions: (updates) =>
-        set((state) => ({
-          options: { ...state.options, ...updates },
-          selectedPreset: "", // Clear preset selection when manually adjusting
-        })),
-
-      setOutlineSize: (size) =>
-        set((state) => ({
-          outlineSize: size,
-          selectedPreset: "", // Clear preset selection when manually adjusting
-        })),
-
-      setOutlineColor: (color) =>
-        set((state) => ({
-          outlineColor: color,
-          selectedPreset: "", // Clear preset selection when manually adjusting
-        })),
-
-      applyPreset: (presetId, settings) =>
-        set(() => ({
-          options: {
-            ...get().options,
-            theme: settings.theme,
-            screenshotScale: settings.screenshotScale,
-            rounded: settings.rounded,
-            shadow: settings.shadow,
-            frame: settings.frame,
-            pattern: settings.pattern,
-            browserBar: settings.browserBar,
-          },
-          outlineSize: settings.outlineSize,
-          selectedPreset: presetId,
-        })),
-
-      resetToDefaults: () =>
-        set(() => ({
-          options: DEFAULT_OPTIONS,
-          outlineSize: DEFAULT_OUTLINE_SIZE,
-          outlineColor: DEFAULT_OUTLINE_COLOR,
-          selectedPreset: "",
-        })),
-    }),
-    {
-      name: "image-tool-storage",
-      partialize: (state) => ({
-        options: state.options,
-        outlineSize: state.outlineSize,
-        outlineColor: state.outlineColor,
-      }),
-    },
-  ),
-)
+    })),
+}))
 
 export type { Options, PresetSettings }

@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     // Use AI SDK to generate text with vision
     const { text, usage } = await generateText({
-      model: getAzureModel(),
+      model: getAzureModel("gpt-5-mini"),
       messages: [
         {
           role: "system",
@@ -38,7 +38,6 @@ export async function POST(request: NextRequest) {
           ],
         },
       ],
-      maxTokens: 1000,
       temperature: 0.7,
     })
 
