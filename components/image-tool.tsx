@@ -108,15 +108,6 @@ const shadowMap: Record<number, string> = {
   4: "rgba(0, 0, 0, 0.25) 0px 25px 45px 0px",
 }
 
-const previewSizes: Record<Exclude<PatternType, "none">, string> = {
-  waves: "250%",
-  dots: "250%",
-  stripes: "25%",
-  zigzag: "25%",
-  graphpaper: "225%",
-  sunrays: "300%",
-}
-
 const GRID_PARENT_HEIGHT = 800
 
 export function ImageTool() {
@@ -441,9 +432,7 @@ export function ImageTool() {
                       style={{
                         backgroundImage: `url("/pattern/${options.pattern.type}.svg")`,
                         backgroundRepeat: "repeat",
-                        backgroundSize:
-                          previewSizes[options.pattern.type as Exclude<PatternType, "none">] ||
-                          `${options.pattern.intensity}%`,
+                        backgroundSize: `${options.pattern.intensity}%`,
                         transform: `rotate(${options.pattern.rotation}deg) scale(2)`,
                         imageRendering: "crisp-edges",
                       }}
@@ -819,7 +808,7 @@ export function ImageTool() {
                             style={{
                               backgroundImage: `url("/pattern/${options.pattern.type}.svg")`,
                               backgroundRepeat: "repeat",
-                              backgroundSize: previewSizes[(options.pattern.type as any) || "stripes"] || "25%",
+                              backgroundSize: `${options.pattern.intensity}%`,
                               transform: `rotate(${options.pattern.rotation}deg) scale(2)`,
                               imageRendering: "crisp-edges",
                             }}
