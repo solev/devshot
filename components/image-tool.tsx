@@ -12,7 +12,9 @@ import { EnhancedSlider } from "@/components/enhanced-slider"
 import { useImageStore, type Options } from "@/lib/store"
 import { Grip, ImagePlus } from "lucide-react"
 import { FloatingSuggestionsDock } from "@/components/floating-suggestions-dock"
-type PatternType = "waves" | "dots" | "stripes" | "zigzag" | "graphpaper" | "sunrays" | "none"
+import GradientWaves from "./gradient-waves"
+
+type PatternType = "waves" | "dots" | "stripes" | "zigzag" | "graphpaper" | "gradientwaves" | "none"
 type ScreenshotBlob = { src: string; w?: number; h?: number }
 
 type FrameProps = React.PropsWithChildren<{
@@ -106,6 +108,15 @@ const shadowMap: Record<number, string> = {
   2: "rgba(0, 0, 0, 0.15) 0px 10px 35px 0px",
   3: "rgba(0, 0, 0, 0.2) 0px 20px 40px 0px",
   4: "rgba(0, 0, 0, 0.25) 0px 25px 45px 0px",
+}
+
+const previewSizes: Record<Exclude<PatternType, "none">, string> = {
+  waves: "250%",
+  dots: "250%",
+  stripes: "25%",
+  zigzag: "25%",
+  graphpaper: "225%",
+  gradientwaves: "100%",
 }
 
 const GRID_PARENT_HEIGHT = 800
@@ -424,19 +435,39 @@ export function ImageTool() {
                       zIndex: 1,
                       pointerEvents: "none",
                       opacity: options.pattern.opacity / 100,
-                      mixBlendMode: "luminosity",
+                      mixBlendMode: options.pattern.type === "gradientwaves" ? "normal" : "luminosity",
                     }}
                   >
-                    <div
-                      className="w-full h-full absolute inset-0"
-                      style={{
-                        backgroundImage: `url("/pattern/${options.pattern.type}.svg")`,
-                        backgroundRepeat: "repeat",
-                        backgroundSize: `${options.pattern.intensity}%`,
-                        transform: `rotate(${options.pattern.rotation}deg) scale(2)`,
-                        imageRendering: "crisp-edges",
-                      }}
-                    />
+                    {options.pattern.type === "gradientwaves" ? (
+                      <GradientWaves
+                        lines={15}
+                        amplitudeX={100}
+                        amplitudeY={20}
+                        offsetX={10}
+                        smoothness={3}
+                        hueStart={53}
+                        saturationStart={74}
+                        lightnessStart={67}
+                        hueEnd={216}
+                        saturationEnd={100}
+                        lightnessEnd={7}
+                        opacity={1}
+                        className="absolute inset-0"
+                      />
+                    ) : (
+                      <div
+                        className="w-full h-full absolute inset-0"
+                        style={{
+                          backgroundImage: `url("/pattern/${options.pattern.type}.svg")`,
+                          backgroundRepeat: "repeat",
+                          backgroundSize:
+                            previewSizes[options.pattern.type as Exclude<PatternType, "none">] ||
+                            `${options.pattern.intensity}%`,
+                          transform: `rotate(${options.pattern.rotation}deg) scale(2)`,
+                          imageRendering: "crisp-edges",
+                        }}
+                      />
+                    )}
                   </div>
                 )}
 
@@ -803,16 +834,36 @@ export function ImageTool() {
                     >
                       <div className="size-7 rounded-sm relative overflow-hidden bg-white flex items-center justify-center">
                         {options.pattern.enabled ? (
-                          <div
-                            className="w-full h-full relative"
-                            style={{
-                              backgroundImage: `url("/pattern/${options.pattern.type}.svg")`,
-                              backgroundRepeat: "repeat",
-                              backgroundSize: `${options.pattern.intensity}%`,
-                              transform: `rotate(${options.pattern.rotation}deg) scale(2)`,
-                              imageRendering: "crisp-edges",
-                            }}
-                          />
+                          <div className="w-full h-full relative">
+                            {options.pattern.type === "gradientwaves" ? (
+                              <GradientWaves
+                                lines={8}
+                                amplitudeX={60}
+                                amplitudeY={12}
+                                offsetX={6}
+                                smoothness={2}
+                                hueStart={53}
+                                saturationStart={74}
+                                lightnessStart={67}
+                                hueEnd={216}
+                                saturationEnd={100}
+                                lightnessEnd={7}
+                                opacity={0.8}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  backgroundImage: `url("/pattern/${options.pattern.type}.svg")`,
+                                  backgroundRepeat: "repeat",
+                                  backgroundSize: ["stripes", "zigzag"].includes(options.pattern.type) ? "25%" : "85%",
+                                  opacity: 0.3,
+                                  transform: "rotate(45deg) scale(2)",
+                                  imageRendering: "crisp-edges",
+                                }}
+                                className="w-full h-full"
+                              />
+                            )}
+                          </div>
                         ) : (
                           <span className="text-stone-400 text-xs">Off</span>
                         )}
@@ -830,7 +881,7 @@ export function ImageTool() {
                       { type: "stripes", label: "Stripes" },
                       { type: "zigzag", label: "Zigzag" },
                       { type: "graphpaper", label: "Graph Paper" },
-                      { type: "sunrays", label: "Sun Rays" },
+                      { type: "gradientwaves", label: "Gradient Waves" },
                     ].map((pattern) => (
                       <div
                         key={pattern.type}
@@ -852,21 +903,36 @@ export function ImageTool() {
                           )}
                         >
                           {pattern.type !== "none" ? (
-                            <div
-                              className="w-full h-full relative"
-                              style={{
-                                backgroundImage: `url("/pattern/${pattern.type}.svg")`,
-                                backgroundRepeat: "repeat",
-                                backgroundSize: ["stripes", "zigzag"].includes(pattern.type)
-                                  ? "25%"
-                                  : pattern.type === "sunrays"
-                                    ? "150%"
-                                    : "85%",
-                                opacity: 0.3,
-                                transform: "rotate(45deg) scale(2)",
-                                imageRendering: "crisp-edges",
-                              }}
-                            />
+                            <div className="w-full h-full relative">
+                              {pattern.type === "gradientwaves" ? (
+                                <GradientWaves
+                                  lines={8}
+                                  amplitudeX={60}
+                                  amplitudeY={12}
+                                  offsetX={6}
+                                  smoothness={2}
+                                  hueStart={53}
+                                  saturationStart={74}
+                                  lightnessStart={67}
+                                  hueEnd={216}
+                                  saturationEnd={100}
+                                  lightnessEnd={7}
+                                  opacity={0.8}
+                                />
+                              ) : (
+                                <div
+                                  style={{
+                                    backgroundImage: `url("/pattern/${pattern.type}.svg")`,
+                                    backgroundRepeat: "repeat",
+                                    backgroundSize: ["stripes", "zigzag"].includes(pattern.type) ? "25%" : "85%",
+                                    opacity: 0.3,
+                                    transform: "rotate(45deg) scale(2)",
+                                    imageRendering: "crisp-edges",
+                                  }}
+                                  className="w-full h-full"
+                                />
+                              )}
+                            </div>
                           ) : null}
                         </div>
                         <span className="text-xs text-stone-600">{pattern.label}</span>
