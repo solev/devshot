@@ -114,7 +114,7 @@ const previewSizes: Record<Exclude<PatternType, "none">, string> = {
   stripes: "25%",
   zigzag: "25%",
   graphpaper: "225%",
-  sunrays: "200%",
+  sunrays: "300%",
 }
 
 const GRID_PARENT_HEIGHT = 800
@@ -871,7 +871,7 @@ export function ImageTool() {
                                 backgroundSize: ["stripes", "zigzag"].includes(pattern.type)
                                   ? "25%"
                                   : pattern.type === "sunrays"
-                                    ? "120%"
+                                    ? "150%"
                                     : "85%",
                                 opacity: 0.3,
                                 transform: "rotate(45deg) scale(2)",
