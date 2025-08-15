@@ -12,7 +12,7 @@ import { EnhancedSlider } from "@/components/enhanced-slider"
 import { useImageStore, type Options } from "@/lib/store"
 import { Grip, ImagePlus } from "lucide-react"
 import { FloatingSuggestionsDock } from "@/components/floating-suggestions-dock"
-type PatternType = "waves" | "dots" | "stripes" | "zigzag" | "graphpaper" | "none"
+type PatternType = "waves" | "dots" | "stripes" | "zigzag" | "graphpaper" | "sunrays" | "none"
 type ScreenshotBlob = { src: string; w?: number; h?: number }
 
 type FrameProps = React.PropsWithChildren<{
@@ -114,6 +114,7 @@ const previewSizes: Record<Exclude<PatternType, "none">, string> = {
   stripes: "25%",
   zigzag: "25%",
   graphpaper: "225%",
+  sunrays: "200%",
 }
 
 const GRID_PARENT_HEIGHT = 800
@@ -840,6 +841,7 @@ export function ImageTool() {
                       { type: "stripes", label: "Stripes" },
                       { type: "zigzag", label: "Zigzag" },
                       { type: "graphpaper", label: "Graph Paper" },
+                      { type: "sunrays", label: "Sun Rays" },
                     ].map((pattern) => (
                       <div
                         key={pattern.type}
@@ -866,7 +868,11 @@ export function ImageTool() {
                               style={{
                                 backgroundImage: `url("/pattern/${pattern.type}.svg")`,
                                 backgroundRepeat: "repeat",
-                                backgroundSize: ["stripes", "zigzag"].includes(pattern.type) ? "25%" : "85%",
+                                backgroundSize: ["stripes", "zigzag"].includes(pattern.type)
+                                  ? "25%"
+                                  : pattern.type === "sunrays"
+                                    ? "120%"
+                                    : "85%",
                                 opacity: 0.3,
                                 transform: "rotate(45deg) scale(2)",
                                 imageRendering: "crisp-edges",
