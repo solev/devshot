@@ -13,8 +13,10 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { EnhancedSlider } from "@/components/enhanced-slider";
+import { GradientWaves } from "@/components/gradient-waves";
 import { useImageStore, type Options } from "@/lib/store";
-import { Grip, ImagePlus } from "lucide-react";
+import { Grip, ImagePlus, Shuffle, ArrowLeftRight } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import {
   FloatingSuggestionsDock,
   type FloatingSuggestionsDockHandle,
@@ -119,6 +121,66 @@ const solidPresets: string[] = [
   "#ecfccb",
 ];
 
+// Quick color presets for Gradient Waves (start/end hex pairs)
+const waveColorPresets: Array<{ start: string; end: string; name?: string }> = [
+  { start: "#FDE68A", end: "#9333EA", name: "Sunset" },
+  { start: "#6EE7B7", end: "#3B82F6", name: "Sea" },
+  { start: "#FCA5A5", end: "#F97316", name: "Coral" },
+  { start: "#A5B4FC", end: "#22D3EE", name: "Aurora" },
+  { start: "#F9A8D4", end: "#8B5CF6", name: "Candy" },
+  { start: "#F3F4F6", end: "#111827", name: "Mono" },
+];
+
+// Helpers for hex <-> HSL used by Gradient Waves controls (no external deps)
+function hslToHex(h: number, s: number, l: number): string {
+  s /= 100;
+  l /= 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const hp = (h % 360) / 60;
+  const x = c * (1 - Math.abs((hp % 2) - 1));
+  let r = 0, g = 0, b = 0;
+  if (hp >= 0 && hp < 1) [r, g, b] = [c, x, 0];
+  else if (hp < 2) [r, g, b] = [x, c, 0];
+  else if (hp < 3) [r, g, b] = [0, c, x];
+  else if (hp < 4) [r, g, b] = [0, x, c];
+  else if (hp < 5) [r, g, b] = [x, 0, c];
+  else [r, g, b] = [c, 0, x];
+  const m = l - c / 2;
+  const to255 = (n: number) => Math.round((n + m) * 255)
+    .toString(16)
+    .padStart(2, "0");
+  return `#${to255(r)}${to255(g)}${to255(b)}`.toUpperCase();
+}
+
+function hexToHslTriplet(hex: string): { h: number; s: number; l: number } {
+  const cleaned = hex.replace("#", "");
+  const isShort = cleaned.length === 3;
+  const r = parseInt(isShort ? cleaned[0] + cleaned[0] : cleaned.slice(0, 2), 16) / 255;
+  const g = parseInt(isShort ? cleaned[1] + cleaned[1] : cleaned.slice(2, 4), 16) / 255;
+  const b = parseInt(isShort ? cleaned[2] + cleaned[2] : cleaned.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0;
+  const l = (max + min) / 2;
+  const d = max - min;
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  if (d !== 0) {
+    switch (max) {
+      case r:
+        h = ((g - b) / d) % 6;
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h: Math.round(h), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
 const shadowMap: Record<number, string> = {
   0: "none",
   1: "rgba(0, 0, 0, 0.1) 0px 0px 10px",
@@ -146,13 +208,14 @@ export function ImageTool() {
   // Get state and actions from Zustand store
   const {
     options,
-    outlineSize,
-    outlineColor,
     updateOptions,
     setOutlineSize,
     setOutlineColor,
     resetToDefaults,
   } = useImageStore();
+
+  const outlineSize = options.outlineSize
+  const outlineColor = options.outlineColor
 
   const [blob, setBlob] = React.useState<ScreenshotBlob>({ src: "" });
   const [uploadedBlob, setUploadedBlob] = React.useState<Blob | null>(null);
@@ -166,8 +229,7 @@ export function ImageTool() {
   } | null>(null);
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
   const [userResized, setUserResized] = React.useState<boolean>(false);
-  const [imageElement, setImageElement] =
-    React.useState<HTMLImageElement | null>(null);
+  // imageElement removed; we only track the uploaded blob
   const suggestionsRef = React.useRef<FloatingSuggestionsDockHandle>(null);
 
   // Keep canvas full width of the grid parent; width adjusts on window/container resize.
@@ -471,13 +533,16 @@ export function ImageTool() {
                 id="capture-root"
                 className={cn(
                   "w-full h-full",
-                  isGradient ? options.theme : undefined,
+                  !options.gradientWaves.enabled && isGradient ? options.theme : undefined,
                   options.aspectRatio
                 )}
                 style={{
                   position: "relative",
                   boxShadow: shadowMap[options.shadow],
-                  background: !isGradient ? options.theme : undefined,
+                  background:
+                    !options.gradientWaves.enabled && !isGradient
+                      ? options.theme
+                      : undefined,
                 }}
               >
                 {renderBrowserBar()}
@@ -494,7 +559,8 @@ export function ImageTool() {
                 />
                 */}
 
-                {options.pattern.enabled && options.pattern.type !== "none" && (
+                {/* Pattern overlay (hidden when Gradient Waves are enabled) */}
+                {options.pattern.enabled && options.pattern.type !== "none" && !options.gradientWaves.enabled && (
                   <div
                     className="w-full h-full absolute inset-0 overflow-hidden"
                     style={{
@@ -517,6 +583,13 @@ export function ImageTool() {
                         imageRendering: "crisp-edges",
                       }}
                     />
+                  </div>
+                )}
+
+                {/* Gradient Waves background (replaces background theme visually; hides pattern) */}
+                {options.gradientWaves.enabled && (
+                  <div className="absolute inset-0" style={{ zIndex: 0 }}>
+                    <GradientWaves />
                   </div>
                 )}
 
@@ -586,11 +659,10 @@ export function ImageTool() {
                             const nw = target.naturalWidth;
                             const nh = target.naturalHeight;
                             setBlob((prev) => ({ ...prev, w: nw, h: nh }));
-                            setImageElement(target);
                             setUserResized(true);
                             // Imperatively trigger AI suggestion generation (prefer original blob)
                             queueMicrotask(() =>
-                              suggestionsRef.current?.generate(target, { blob: uploadedBlob })
+                              suggestionsRef.current?.generate({ blob: uploadedBlob })
                             );
                           }}
                         />
@@ -908,7 +980,12 @@ export function ImageTool() {
                           theme,
                           theme === options.theme && "ring-2 ring-rose-400"
                         )}
-                        onClick={() => updateOptions({ theme })}
+                        onClick={() =>
+                          updateOptions({
+                            theme,
+                            gradientWaves: { ...options.gradientWaves, enabled: false },
+                          })
+                        }
                         aria-label={theme}
                       />
                     ))}
@@ -928,7 +1005,12 @@ export function ImageTool() {
                         )}
                         style={{ background: color }}
                         aria-label={`Color ${color}`}
-                        onClick={() => updateOptions({ theme: color })}
+                        onClick={() =>
+                          updateOptions({
+                            theme: color,
+                            gradientWaves: { ...options.gradientWaves, enabled: false },
+                          })
+                        }
                       />
                     ))}
                   </div>
@@ -1003,6 +1085,10 @@ export function ImageTool() {
                               type: pattern.type as any,
                               enabled: pattern.type !== "none",
                             },
+                            gradientWaves:
+                              pattern.type !== "none"
+                                ? { ...options.gradientWaves, enabled: false }
+                                : options.gradientWaves,
                           })
                         }
                       >
@@ -1102,6 +1188,436 @@ export function ImageTool() {
                 </PopoverContent>
               </Popover>
 
+              {/* Gradient Waves Popover */}
+              <Popover>
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-1">
+                    <span className="block text-xs font-medium text-stone-700">
+                      Gradient Waves
+                    </span>
+                  </div>
+                  <PopoverTrigger asChild>
+                    <button
+                      aria-label="Edit gradient waves"
+                      className={cn(
+                        "size-8 rounded-md border border-stone-300 flex items-center justify-center transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-stone-400 bg-white",
+                        options.gradientWaves.enabled ? "opacity-100" : "opacity-50"
+                      )}
+                    >
+                      <div className="size-7 rounded-sm relative overflow-hidden bg-white flex items-center justify-center">
+                        <span className="text-[10px] text-stone-600">GW</span>
+                      </div>
+                    </button>
+                  </PopoverTrigger>
+                </div>
+                <PopoverContent align="end" className="z-[9999] w-80">
+                  <span className="block font-medium text-sm text-stone-900 mb-2">
+                    Gradient Waves
+                  </span>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm text-stone-700">Enabled</Label>
+                      <Switch
+                        aria-label="Toggle gradient waves"
+                        checked={options.gradientWaves.enabled}
+                        onCheckedChange={(checked) =>
+                          updateOptions({
+                            gradientWaves: { ...options.gradientWaves, enabled: checked },
+                            // Mutually exclusive: disabling Pattern when Waves enabled
+                            pattern: checked ? { ...options.pattern, enabled: false, type: "none" } : options.pattern,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm text-stone-700">Fill</Label>
+                      <Switch
+                        aria-label="Toggle fill mode"
+                        checked={options.gradientWaves.fill}
+                        onCheckedChange={(checked) =>
+                          updateOptions({
+                            gradientWaves: { ...options.gradientWaves, fill: checked },
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm text-stone-700">Crazyness</Label>
+                      <Switch
+                        aria-label="Toggle crazyness"
+                        checked={options.gradientWaves.crazyness}
+                        onCheckedChange={(checked) =>
+                          updateOptions({
+                            gradientWaves: { ...options.gradientWaves, crazyness: checked },
+                          })
+                        }
+                      />
+                    </div>
+                    <EnhancedSlider
+                      label="Lines"
+                      value={options.gradientWaves.lines}
+                      onChange={(v) =>
+                        updateOptions({
+                          gradientWaves: { ...options.gradientWaves, lines: Math.round(v) },
+                        })
+                      }
+                      min={5}
+                      max={50}
+                      step={1}
+                      defaultValue={20}
+                      onReset={() =>
+                        updateOptions({
+                          gradientWaves: { ...options.gradientWaves, lines: 20 },
+                        })
+                      }
+                    />
+                    <EnhancedSlider
+                      label="Amplitude X"
+                      value={options.gradientWaves.amplitudeX}
+                      onChange={(v) =>
+                        updateOptions({
+                          gradientWaves: { ...options.gradientWaves, amplitudeX: Math.round(v) },
+                        })
+                      }
+                      min={20}
+                      max={300}
+                      step={1}
+                      defaultValue={100}
+                      onReset={() =>
+                        updateOptions({
+                          gradientWaves: { ...options.gradientWaves, amplitudeX: 100 },
+                        })
+                      }
+                    />
+                    <EnhancedSlider
+                      label="Amplitude Y"
+                      value={options.gradientWaves.amplitudeY}
+                      onChange={(v) =>
+                        updateOptions({
+                          gradientWaves: { ...options.gradientWaves, amplitudeY: Math.round(v) },
+                        })
+                      }
+                      min={0}
+                      max={200}
+                      step={1}
+                      defaultValue={20}
+                      onReset={() =>
+                        updateOptions({
+                          gradientWaves: { ...options.gradientWaves, amplitudeY: 20 },
+                        })
+                      }
+                    />
+                    <EnhancedSlider
+                      label="Smoothness"
+                      value={options.gradientWaves.smoothness}
+                      onChange={(v) =>
+                        updateOptions({
+                          gradientWaves: { ...options.gradientWaves, smoothness: Number(v.toFixed(1)) },
+                        })
+                      }
+                      min={0.5}
+                      max={10}
+                      step={0.5}
+                      defaultValue={3}
+                      onReset={() =>
+                        updateOptions({
+                          gradientWaves: { ...options.gradientWaves, smoothness: 3 },
+                        })
+                      }
+                    />
+                    <EnhancedSlider
+                      label="Offset X"
+                      value={options.gradientWaves.offsetX}
+                      onChange={(v) =>
+                        updateOptions({
+                          gradientWaves: { ...options.gradientWaves, offsetX: Math.round(v) },
+                        })
+                      }
+                      min={-20}
+                      max={20}
+                      step={1}
+                      defaultValue={10}
+                      onReset={() =>
+                        updateOptions({
+                          gradientWaves: { ...options.gradientWaves, offsetX: 10 },
+                        })
+                      }
+                    />
+                    <div className="space-y-4">
+                      {/* Quick palettes + preview */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-stone-700">Quick palettes</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {waveColorPresets.map((p, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              className="h-7 w-16 rounded border border-stone-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
+                              style={{
+                                backgroundImage: `linear-gradient(90deg, ${p.start}, ${p.end})`,
+                              }}
+                              title={p.name ?? `Preset ${i + 1}`}
+                              aria-label={p.name ?? `Preset ${i + 1}`}
+                              onClick={() => {
+                                const s = hexToHslTriplet(p.start)
+                                const e = hexToHslTriplet(p.end)
+                                updateOptions({
+                                  gradientWaves: { ...options.gradientWaves, start: s, end: e },
+                                })
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="flex-1 h-2 rounded"
+                            style={{
+                              backgroundImage: `linear-gradient(90deg, ${hslToHex(options.gradientWaves.start.h, options.gradientWaves.start.s, options.gradientWaves.start.l)}, ${hslToHex(options.gradientWaves.end.h, options.gradientWaves.end.s, options.gradientWaves.end.l)})`,
+                            }}
+                            aria-label="Current gradient preview"
+                            role="img"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                            title="Swap colors"
+                            aria-label="Swap colors"
+                            onClick={() =>
+                              updateOptions({
+                                gradientWaves: {
+                                  ...options.gradientWaves,
+                                  start: options.gradientWaves.end,
+                                  end: options.gradientWaves.start,
+                                },
+                              })
+                            }
+                          >
+                            <ArrowLeftRight className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                            title="Randomize palette"
+                            aria-label="Randomize palette"
+                            onClick={() => {
+                              const pick = waveColorPresets[Math.floor(Math.random() * waveColorPresets.length)]
+                              const s = hexToHslTriplet(pick.start)
+                              const e = hexToHslTriplet(pick.end)
+                              updateOptions({ gradientWaves: { ...options.gradientWaves, start: s, end: e } })
+                            }}
+                          >
+                            <Shuffle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-stone-700">Start color</Label>
+                        <div className="flex items-center justify-between gap-2">
+                          <input
+                            type="color"
+                            className="h-8 w-8 rounded border border-stone-300 cursor-pointer"
+                            aria-label="Start color"
+                            value={hslToHex(
+                              options.gradientWaves.start.h,
+                              options.gradientWaves.start.s,
+                              options.gradientWaves.start.l
+                            )}
+                            onChange={(e) =>
+                              updateOptions({
+                                gradientWaves: {
+                                  ...options.gradientWaves,
+                                  start: hexToHslTriplet(e.target.value),
+                                },
+                              })
+                            }
+                          />
+                          <input
+                            type="text"
+                            className="h-8 w-28 rounded border border-stone-300 px-2 text-xs"
+                            aria-label="Start color hex"
+                            value={hslToHex(
+                              options.gradientWaves.start.h,
+                              options.gradientWaves.start.s,
+                              options.gradientWaves.start.l
+                            )}
+                            onChange={(e) => {
+                              const hex = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`
+                              const valid = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex)
+                              if (valid) {
+                                updateOptions({
+                                  gradientWaves: {
+                                    ...options.gradientWaves,
+                                    start: hexToHslTriplet(hex),
+                                  },
+                                })
+                              }
+                            }}
+                          />
+                        </div>
+                        <details className="mt-1">
+                          <summary className="text-xs text-stone-600 cursor-pointer select-none">Advanced (HSL)</summary>
+                          <div className="space-y-2 mt-2">
+                            <EnhancedSlider
+                              label="Hue"
+                              value={options.gradientWaves.start.h}
+                              onChange={(v) =>
+                                updateOptions({
+                                  gradientWaves: {
+                                    ...options.gradientWaves,
+                                    start: { ...options.gradientWaves.start, h: Math.round(v) },
+                                  },
+                                })
+                              }
+                              min={0}
+                              max={360}
+                              step={1}
+                              defaultValue={53}
+                            />
+                            <EnhancedSlider
+                              label="Saturation"
+                              value={options.gradientWaves.start.s}
+                              onChange={(v) =>
+                                updateOptions({
+                                  gradientWaves: {
+                                    ...options.gradientWaves,
+                                    start: { ...options.gradientWaves.start, s: Math.round(v) },
+                                  },
+                                })
+                              }
+                              min={0}
+                              max={100}
+                              step={1}
+                              unit="%"
+                              defaultValue={74}
+                            />
+                            <EnhancedSlider
+                              label="Lightness"
+                              value={options.gradientWaves.start.l}
+                              onChange={(v) =>
+                                updateOptions({
+                                  gradientWaves: {
+                                    ...options.gradientWaves,
+                                    start: { ...options.gradientWaves.start, l: Math.round(v) },
+                                  },
+                                })
+                              }
+                              min={0}
+                              max={100}
+                              step={1}
+                              unit="%"
+                              defaultValue={67}
+                            />
+                          </div>
+                        </details>
+                      </div>
+                      <Separator className="bg-stone-200" />
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-stone-700">End color</Label>
+                        <div className="flex items-center justify-between gap-2">
+                          <input
+                            type="color"
+                            className="h-8 w-8 rounded border border-stone-300 cursor-pointer"
+                            aria-label="End color"
+                            value={hslToHex(
+                              options.gradientWaves.end.h,
+                              options.gradientWaves.end.s,
+                              options.gradientWaves.end.l
+                            )}
+                            onChange={(e) =>
+                              updateOptions({
+                                gradientWaves: {
+                                  ...options.gradientWaves,
+                                  end: hexToHslTriplet(e.target.value),
+                                },
+                              })
+                            }
+                          />
+                          <input
+                            type="text"
+                            className="h-8 w-28 rounded border border-stone-300 px-2 text-xs"
+                            aria-label="End color hex"
+                            value={hslToHex(
+                              options.gradientWaves.end.h,
+                              options.gradientWaves.end.s,
+                              options.gradientWaves.end.l
+                            )}
+                            onChange={(e) => {
+                              const hex = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`
+                              const valid = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex)
+                              if (valid) {
+                                updateOptions({
+                                  gradientWaves: {
+                                    ...options.gradientWaves,
+                                    end: hexToHslTriplet(hex),
+                                  },
+                                })
+                              }
+                            }}
+                          />
+                        </div>
+                        <details className="mt-1">
+                          <summary className="text-xs text-stone-600 cursor-pointer select-none">Advanced (HSL)</summary>
+                          <div className="space-y-2 mt-2">
+                            <EnhancedSlider
+                              label="Hue"
+                              value={options.gradientWaves.end.h}
+                              onChange={(v) =>
+                                updateOptions({
+                                  gradientWaves: {
+                                    ...options.gradientWaves,
+                                    end: { ...options.gradientWaves.end, h: Math.round(v) },
+                                  },
+                                })
+                              }
+                              min={0}
+                              max={360}
+                              step={1}
+                              defaultValue={216}
+                            />
+                            <EnhancedSlider
+                              label="Saturation"
+                              value={options.gradientWaves.end.s}
+                              onChange={(v) =>
+                                updateOptions({
+                                  gradientWaves: {
+                                    ...options.gradientWaves,
+                                    end: { ...options.gradientWaves.end, s: Math.round(v) },
+                                  },
+                                })
+                              }
+                              min={0}
+                              max={100}
+                              step={1}
+                              unit="%"
+                              defaultValue={100}
+                            />
+                            <EnhancedSlider
+                              label="Lightness"
+                              value={options.gradientWaves.end.l}
+                              onChange={(v) =>
+                                updateOptions({
+                                  gradientWaves: {
+                                    ...options.gradientWaves,
+                                    end: { ...options.gradientWaves.end, l: Math.round(v) },
+                                  },
+                                })
+                              }
+                              min={0}
+                              max={100}
+                              step={1}
+                              unit="%"
+                              defaultValue={7}
+                            />
+                          </div>
+                        </details>
+                      </div>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
               <EnhancedSlider
                 label="Size"
                 value={options.screenshotScale}
@@ -1186,7 +1702,7 @@ export function ImageTool() {
               <div className="flex items-center justify-between">
                 <Label className="text-sm text-stone-700">Browser bar</Label>
                 <div className="flex items-center gap-2">
-                  <select
+                  <select aria-label="Browser bar style"
                     className="h-8 rounded-md border border-stone-300 bg-white px-2 text-sm"
                     value={options.browserBar}
                     onChange={(e) =>
@@ -1232,12 +1748,7 @@ export function ImageTool() {
         </div>
 
         {/* Floating Suggestions Dock */}
-        <FloatingSuggestionsDock
-          ref={suggestionsRef}
-          imageElement={imageElement}
-          imageBlob={uploadedBlob}
-          isVisible={Boolean(blob.src)}
-        />
+  <FloatingSuggestionsDock ref={suggestionsRef} imageBlob={uploadedBlob} isVisible={Boolean(blob.src)} />
       </div>
     </div>
   );

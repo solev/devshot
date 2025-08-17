@@ -22,18 +22,6 @@ type Options = {
   frame: "none" | "arc" | "stack"
   outlineSize: number
   outlineColor: string
-  gradientWaves: {
-    enabled: boolean
-    lines: number
-    amplitudeX: number
-    amplitudeY: number
-    smoothness: number
-    offsetX: number
-    fill: boolean
-    crazyness: boolean
-    start: { h: number; s: number; l: number }
-    end: { h: number; s: number; l: number }
-  }
 }
 
 type PresetSettings = {
@@ -82,18 +70,6 @@ const DEFAULT_OPTIONS: Options = {
   frame: "arc",
   outlineSize: DEFAULT_OUTLINE_SIZE,
   outlineColor: DEFAULT_OUTLINE_COLOR,
-  gradientWaves: {
-    enabled: false,
-    lines: 20,
-    amplitudeX: 100,
-    amplitudeY: 20,
-    smoothness: 3,
-    offsetX: 10,
-    fill: true,
-    crazyness: false,
-    start: { h: 53, s: 74, l: 67 },
-    end: { h: 216, s: 100, l: 7 },
-  },
 }
 
 export const useImageStore = create<ImageStore>()((set, get) => ({

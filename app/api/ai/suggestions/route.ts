@@ -6,7 +6,7 @@ import { SuggestionSchema } from "@/lib/schemas"
 
 export async function POST(request: NextRequest) {
   try {
-       const { imageData, currentSettings } = await request.json()
+    const { imageData, currentSettings } = await request.json()
 
     if (!imageData) {
       return Response.json({ error: "Missing imageData" }, { status: 400 })
@@ -25,26 +25,15 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "system",
-          content: `You are an expert UI/UX designer specializing in screenshot beautification. Your task is to analyze screenshots and generate beautiful, professional styling suggestions.
-
-Available options:
-- Themes: gradients (bg-gradient-to-br from-[color] to-[color]) or solid colors (#hex)
-- Frames: "none", "arc" (glass effect), "stack" (layered effect)
-- Shadows: 0-4 (0=none, 4=dramatic)
-- Patterns: "waves", "dots", "stripes", "zigzag", "graphpaper", "none"
-- Browser bars: "hidden", "light", "dark"
-- Screenshot scale: 0.5-1.5
-- Border radius: 0-32px
-- Outline size: 0-100px
-
-Generate 4-6 diverse suggestions that complement the image's style and colors.`,
+          content: `You are an expert UI/UX designer specializing in screenshot beautification. Your task is to analyze screenshots and generate beautiful, professional styling suggestions. 
+          Generate 4-6 diverse suggestions that complement the image's style and colors.`,
         },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: `Analyze this screenshot and create beautiful styling suggestions. Current settings for reference: ${JSON.stringify(currentSettings, null, 2)}
+              text: `Analyze this screenshot and create beautiful styling suggestions.
 
 Create suggestions that:
 1. Complement the image's color palette
