@@ -2,202 +2,38 @@
 
 import * as React from "react";
 import html2canvas from "html2canvas-pro";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { EnhancedSlider } from "@/components/enhanced-slider";
-import { GradientWaves } from "@/components/gradient-waves";
+import { BrowserBar } from "@/components/image-tool/preview/BrowserBar";
+import { PatternOverlay } from "@/components/image-tool/preview/PatternOverlay";
+import { GradientWavesBackground } from "@/components/image-tool/preview/GradientWavesBackground";
+import { ResizeHandle } from "@/components/image-tool/preview/ResizeHandle";
 import { useImageStore, type Options } from "@/lib/store";
-import { Grip, ImagePlus, Shuffle, ArrowLeftRight } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { Frame } from "@/components/image-tool/Frame";
+import { shadowMap } from "@/lib/config/shadows";
+import { GRID_PARENT_HEIGHT } from "@/lib/config/constants";
+import { ImagePlus } from "lucide-react";
 import {
   FloatingSuggestionsDock,
   type FloatingSuggestionsDockHandle,
 } from "@/components/floating-suggestions-dock";
-type PatternType =
-  | "waves"
-  | "dots"
-  | "stripes"
-  | "zigzag"
-  | "graphpaper"
-  | "none";
-type ScreenshotBlob = { src: string; w?: number; h?: number };
+import type { ScreenshotBlob } from "@/lib/types/image-tool";
+import { Sidebar } from "@/components/image-tool/sidebar/Sidebar";
 
-type FrameProps = React.PropsWithChildren<{
-  type: "none" | "arc" | "stack";
-  backgroundColor: string;
-  borderRadius: number;
-}>;
+// FrameProps type now lives with the Frame component
 
-const Frame = ({
-  type,
-  borderRadius,
-  backgroundColor,
-  children,
-}: FrameProps) => {
-  if (type === "arc") {
-    return (
-      <div className="relative pointer-events-none">
-        <div
-          style={{
-            borderRadius: borderRadius + 7,
-            boxShadow:
-              "rgba(0, 0, 0, 0.22) 0px 18px 88px -4px, rgba(0, 0, 0, 0.22) 0px 8px 28px -6px",
-            backgroundColor: "rgba(255, 255, 255, 0.314)",
-            zIndex: 2,
-            border: "1px solid rgba(255, 255, 255, 0.376)",
-            padding: "7px",
-          }}
-        >
-          {children}
-        </div>
-      </div>
-    );
-  }
-  if (type === "stack") {
-    return (
-      <div className="relative pointer-events-none">
-        <div className="absolute inset-0">
-          {Array.from({ length: 3 }).map((_, index) => {
-            const reverseIndex = 3 - index - 1;
-            const translateY = reverseIndex * -10;
-            const scale = 1 - reverseIndex * 0.06;
-            const opacity = Math.pow(0.8, reverseIndex);
-            return (
-              <div
-                key={index}
-                className="absolute w-full"
-                style={{
-                  height: borderRadius,
-                  borderTopLeftRadius: borderRadius,
-                  borderTopRightRadius: borderRadius,
-                  backgroundColor,
-                  transform: `translateY(${translateY}px) scaleX(${scale})`,
-                  transformOrigin: "top center",
-                  opacity,
-                  clipPath: "inset(0 0 calc(100% - 10px) 0)",
-                }}
-              />
-            );
-          })}
-        </div>
-        <div className="relative z-10">{children}</div>
-      </div>
-    );
-  }
-  return <>{children}</>;
-};
+// Frame moved to components/image-tool/Frame
 
-const gradientPresets: string[] = [
-  "bg-gradient-to-br from-rose-300 to-orange-400",
-  "bg-gradient-to-br from-amber-300 to-rose-400",
-  "bg-gradient-to-br from-emerald-300 to-teal-400",
-  "bg-gradient-to-br from-fuchsia-300 to-purple-400",
-  "bg-gradient-to-br from-stone-900 to-stone-950",
-  "bg-gradient-to-br from-stone-50 to-stone-100",
-  "bg-gradient-to-br from-lime-300 to-emerald-400",
-  "bg-gradient-to-br from-pink-300 to-rose-500",
-  "bg-gradient-to-br from-orange-300 to-red-400",
-  "bg-gradient-to-br from-purple-300 to-fuchsia-400",
-];
-
-const solidPresets: string[] = [
-  "#111827",
-  "#1f2937",
-  "#374151",
-  "#4b5563",
-  "#f9fafb",
-  "#f3f4f6",
-  "#e5e7eb",
-  "#fef3c7",
-  "#fff1f2",
-  "#ecfccb",
-];
-
-// Quick color presets for Gradient Waves (start/end hex pairs)
-const waveColorPresets: Array<{ start: string; end: string; name?: string }> = [
-  { start: "#FDE68A", end: "#9333EA", name: "Sunset" },
-  { start: "#6EE7B7", end: "#3B82F6", name: "Sea" },
-  { start: "#FCA5A5", end: "#F97316", name: "Coral" },
-  { start: "#A5B4FC", end: "#22D3EE", name: "Aurora" },
-  { start: "#F9A8D4", end: "#8B5CF6", name: "Candy" },
-  { start: "#F3F4F6", end: "#111827", name: "Mono" },
-];
+// Presets moved to lib/config/presets
 
 // Helpers for hex <-> HSL used by Gradient Waves controls (no external deps)
-function hslToHex(h: number, s: number, l: number): string {
-  s /= 100;
-  l /= 100;
-  const c = (1 - Math.abs(2 * l - 1)) * s;
-  const hp = (h % 360) / 60;
-  const x = c * (1 - Math.abs((hp % 2) - 1));
-  let r = 0, g = 0, b = 0;
-  if (hp >= 0 && hp < 1) [r, g, b] = [c, x, 0];
-  else if (hp < 2) [r, g, b] = [x, c, 0];
-  else if (hp < 3) [r, g, b] = [0, c, x];
-  else if (hp < 4) [r, g, b] = [0, x, c];
-  else if (hp < 5) [r, g, b] = [x, 0, c];
-  else [r, g, b] = [c, 0, x];
-  const m = l - c / 2;
-  const to255 = (n: number) => Math.round((n + m) * 255)
-    .toString(16)
-    .padStart(2, "0");
-  return `#${to255(r)}${to255(g)}${to255(b)}`.toUpperCase();
-}
+// Color helpers moved to lib/utils/color
 
-function hexToHslTriplet(hex: string): { h: number; s: number; l: number } {
-  const cleaned = hex.replace("#", "");
-  const isShort = cleaned.length === 3;
-  const r = parseInt(isShort ? cleaned[0] + cleaned[0] : cleaned.slice(0, 2), 16) / 255;
-  const g = parseInt(isShort ? cleaned[1] + cleaned[1] : cleaned.slice(2, 4), 16) / 255;
-  const b = parseInt(isShort ? cleaned[2] + cleaned[2] : cleaned.slice(4, 6), 16) / 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0;
-  const l = (max + min) / 2;
-  const d = max - min;
-  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
-  if (d !== 0) {
-    switch (max) {
-      case r:
-        h = ((g - b) / d) % 6;
-        break;
-      case g:
-        h = (b - r) / d + 2;
-        break;
-      case b:
-        h = (r - g) / d + 4;
-        break;
-    }
-    h *= 60;
-    if (h < 0) h += 360;
-  }
-  return { h: Math.round(h), s: Math.round(s * 100), l: Math.round(l * 100) };
-}
+// Shadows moved to lib/config/shadows
 
-const shadowMap: Record<number, string> = {
-  0: "none",
-  1: "rgba(0, 0, 0, 0.1) 0px 0px 10px",
-  2: "rgba(0, 0, 0, 0.15) 0px 10px 35px 0px",
-  3: "rgba(0, 0, 0, 0.2) 0px 20px 40px 0px",
-  4: "rgba(0, 0, 0, 0.25) 0px 25px 45px 0px",
-};
+// previewSizes moved out; no longer used here
 
-const previewSizes: Record<Exclude<PatternType, "none">, string> = {
-  waves: "250%",
-  dots: "250%",
-  stripes: "25%",
-  zigzag: "25%",
-  graphpaper: "225%",
-};
-
-const GRID_PARENT_HEIGHT = 800;
+// Constant moved to lib/config/constants
 
 export function ImageTool() {
   const wrapperRef = React.useRef<HTMLDivElement>(null);
@@ -214,12 +50,13 @@ export function ImageTool() {
     resetToDefaults,
   } = useImageStore();
 
-  const outlineSize = options.outlineSize
-  const outlineColor = options.outlineColor
+  const outlineSize = options.outlineSize;
+  const outlineColor = options.outlineColor;
 
   const [blob, setBlob] = React.useState<ScreenshotBlob>({ src: "" });
   const [uploadedBlob, setUploadedBlob] = React.useState<Blob | null>(null);
   const [canvasWidth, setCanvasWidth] = React.useState<number>(800);
+  const [containerHeight, setContainerHeight] = React.useState<number>(800);
   const [canvasHeight, setCanvasHeight] = React.useState<number>(380);
   const [isResizing, setIsResizing] = React.useState<boolean>(false);
   const [resizeStart, setResizeStart] = React.useState<{
@@ -231,21 +68,60 @@ export function ImageTool() {
   const [userResized, setUserResized] = React.useState<boolean>(false);
   // imageElement removed; we only track the uploaded blob
   const suggestionsRef = React.useRef<FloatingSuggestionsDockHandle>(null);
+  // Refs and state for auto-sizing the Gradient Waves popover
+  const gradientTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const gradientContentRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Auto-calc popover max-height so it can grow to the available viewport space
+  React.useEffect(() => {
+    const content = gradientContentRef.current;
+    if (!content) return;
+    const margin = 48; // px reserved for padding/header/footer
+    const update = () => {
+      const viewportH = window.innerHeight;
+      const trigRect = gradientTriggerRef.current?.getBoundingClientRect();
+      const spaceBelow = trigRect
+        ? Math.max(0, viewportH - trigRect.bottom - margin)
+        : viewportH - margin;
+      const spaceAbove = trigRect ? Math.max(0, trigRect.top - margin) : viewportH - margin;
+      const max = Math.max(spaceBelow, spaceAbove);
+      const finalMax = Math.max(160, max); // ensure reasonable minimum
+      content.style.maxHeight = `${finalMax}px`;
+      content.style.overflowY = "auto";
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    window.addEventListener("scroll", update, { passive: true });
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+      window.removeEventListener("scroll", update);
+      // cleanup inline styles
+      try {
+        if (content) {
+          content.style.maxHeight = "";
+          content.style.overflowY = "";
+        }
+      } catch {}
+    };
+  }, [options.gradientWaves.enabled]);
 
   // Keep canvas full width of the grid parent; width adjusts on window/container resize.
   React.useEffect(() => {
-    const syncWidth = () => {
+    const syncSize = () => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       setCanvasWidth(Math.max(320, Math.round(rect.width)));
+      setContainerHeight(Math.max(320, Math.round(rect.height)));
     };
-    syncWidth();
-    const ro = new ResizeObserver(syncWidth);
+    syncSize();
+    const ro = new ResizeObserver(syncSize);
     if (containerRef.current) ro.observe(containerRef.current);
-    window.addEventListener("resize", syncWidth);
+    window.addEventListener("resize", syncSize);
     return () => {
       if (containerRef.current) ro.unobserve(containerRef.current);
-      window.removeEventListener("resize", syncWidth);
+      window.removeEventListener("resize", syncSize);
       ro.disconnect();
     };
   }, []);
@@ -262,7 +138,7 @@ export function ImageTool() {
         clientY = (e as MouseEvent).clientY;
       }
       const deltaY = clientY - resizeStart.y;
-      const MAX = GRID_PARENT_HEIGHT - 24;
+      const MAX = containerHeight - 24;
       const newH = Math.max(
         200,
         Math.min(MAX, Math.round(resizeStart.h + deltaY))
@@ -280,7 +156,7 @@ export function ImageTool() {
       window.removeEventListener("touchmove", onMove as any);
       window.removeEventListener("touchend", onUp);
     };
-  }, [isResizing, resizeStart]);
+  }, [isResizing, resizeStart, containerHeight]);
 
   // Paste to upload
   React.useEffect(() => {
@@ -294,10 +170,31 @@ export function ImageTool() {
           const file = item.getAsFile();
           if (!file) continue;
           const reader = new FileReader();
-      reader.onload = (e2) => {
+          reader.onload = (e2) => {
             if (e2.target && e2.target.result) {
               setBlob({ src: e2.target.result as string });
-        setUploadedBlob(file)
+              setUploadedBlob(file);
+              // Auto-fit canvas height to image aspect if user hasn't resized yet
+              try {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                  const nw = img.naturalWidth || img.width;
+                  const nh = img.naturalHeight || img.height;
+                  setBlob((prev) => ({ ...prev, w: nw, h: nh }));
+                  if (!userResized && containerRef.current) {
+                    const rect = containerRef.current.getBoundingClientRect();
+                    const maxH = GRID_PARENT_HEIGHT - 16;
+                    const aspect = nh > 0 && nw > 0 ? nh / nw : 9 / 16;
+                    const idealH = Math.round(rect.width * aspect);
+                    const clampedH = Math.max(200, Math.min(maxH, idealH));
+                    setCanvasHeight(clampedH);
+                  }
+                  URL.revokeObjectURL(url);
+                };
+                img.onerror = () => URL.revokeObjectURL(url);
+                img.src = url;
+              } catch {}
             }
           };
           reader.readAsDataURL(file);
@@ -393,7 +290,31 @@ export function ImageTool() {
         reader.onload = (e) => {
           if (e.target && e.target.result) {
             setBlob({ src: e.target.result as string });
-            setUploadedBlob(file)
+            setUploadedBlob(file);
+            // Try to infer and set canvas height to match aspect ratio once file metadata is available
+            // We'll attempt to read intrinsic dimensions efficiently using Image without drawing to canvas.
+            try {
+              const url = URL.createObjectURL(file);
+              const img = new Image();
+              img.onload = () => {
+                const nw = img.naturalWidth || img.width;
+                const nh = img.naturalHeight || img.height;
+                // Save dimensions for layout calculation
+                setBlob((prev) => ({ ...prev, w: nw, h: nh }));
+                // Auto-set height only if user hasn't manually resized yet
+                if (!userResized && containerRef.current) {
+                  const rect = containerRef.current.getBoundingClientRect();
+                  const maxH = GRID_PARENT_HEIGHT - 16; // match preview container max height
+                  const aspect = nh > 0 && nw > 0 ? nh / nw : 9 / 16;
+                  const idealH = Math.round(rect.width * aspect);
+                  const clampedH = Math.max(200, Math.min(maxH, idealH));
+                  setCanvasHeight(clampedH);
+                }
+                URL.revokeObjectURL(url);
+              };
+              img.onerror = () => URL.revokeObjectURL(url);
+              img.src = url;
+            } catch {}
           }
         };
         reader.readAsDataURL(file);
@@ -402,31 +323,7 @@ export function ImageTool() {
     }
   };
 
-  const renderBrowserBar = () => {
-    if (options.browserBar === "light") {
-      return (
-        <div className="flex items-center w-full px-4 py-[10px] rounded-t-lg bg-white/80">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-red-400 rounded-full" />
-            <div className="w-3 h-3 bg-yellow-300 rounded-full" />
-            <div className="w-3 h-3 bg-green-500 rounded-full" />
-          </div>
-        </div>
-      );
-    }
-    if (options.browserBar === "dark") {
-      return (
-        <div className="flex items-center w-full px-4 py-[10px] rounded-t-lg bg-black/40">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-red-400 rounded-full" />
-            <div className="w-3 h-3 bg-yellow-300 rounded-full" />
-            <div className="w-3 h-3 bg-green-500 rounded-full" />
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
+  // BrowserBar now provided by components/image-tool/preview/BrowserBar
 
   const isGradient = options.theme.includes("bg-gradient");
 
@@ -486,16 +383,16 @@ export function ImageTool() {
 
   return (
     <div className="flex flex-col pt-1">
-      <div className="relative w-full flex justify-between gap-6">
+      <div className="relative w-full flex justify-between gap-6 items-stretch pb-4">
         {/* Gridline parent: fixed height, does not change with image resizing */}
         <div
           className={cn(
             "relative flex-1 flex items-start justify-center rounded-lg",
             "bg-[size:10px_10px] bg-fixed transition-all duration-200 border border-stone-200",
-            "bg-[image:repeating-linear-gradient(315deg,rgba(209,213,219,0.4)_0,rgba(209,213,219,0.4)_1px,_transparent_0,_transparent_50%)]"
+            "bg-[image:repeating-linear-gradient(315deg,rgba(209,213,219,0.4)_0,rgba(209,213,219,0.4)_1px,_transparent_0,_transparent_50%)]",
+            "h-[calc(100vh-6rem)]"
           )}
           ref={containerRef}
-          style={{ height: GRID_PARENT_HEIGHT }}
           onDragOver={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -523,9 +420,9 @@ export function ImageTool() {
               style={{
                 height: Math.min(
                   canvasHeight + outlineSize,
-                  GRID_PARENT_HEIGHT - 16
+                  containerHeight - 16
                 ),
-                maxHeight: GRID_PARENT_HEIGHT - 16,
+                maxHeight: containerHeight - 16,
               }}
             >
               <div
@@ -533,7 +430,9 @@ export function ImageTool() {
                 id="capture-root"
                 className={cn(
                   "w-full h-full",
-                  !options.gradientWaves.enabled && isGradient ? options.theme : undefined,
+                  !options.gradientWaves.enabled && isGradient
+                    ? options.theme
+                    : undefined,
                   options.aspectRatio
                 )}
                 style={{
@@ -545,7 +444,7 @@ export function ImageTool() {
                       : undefined,
                 }}
               >
-                {renderBrowserBar()}
+                <BrowserBar variant={options.browserBar} />
 
                 {/* Remove this entire div
                 <div
@@ -560,38 +459,19 @@ export function ImageTool() {
                 */}
 
                 {/* Pattern overlay (hidden when Gradient Waves are enabled) */}
-                {options.pattern.enabled && options.pattern.type !== "none" && !options.gradientWaves.enabled && (
-                  <div
-                    className="w-full h-full absolute inset-0 overflow-hidden"
-                    style={{
-                      zIndex: 1,
-                      pointerEvents: "none",
-                      opacity: options.pattern.opacity / 100,
-                      mixBlendMode: "luminosity",
-                    }}
-                  >
-                    <div
-                      className="w-full h-full absolute inset-0"
-                      style={{
-                        backgroundImage: `url("/pattern/${options.pattern.type}.svg")`,
-                        backgroundRepeat: "repeat",
-                        backgroundSize:
-                          previewSizes[
-                            options.pattern.type as Exclude<PatternType, "none">
-                          ] || `${options.pattern.intensity}%`,
-                        transform: `rotate(${options.pattern.rotation}deg) scale(2)`,
-                        imageRendering: "crisp-edges",
-                      }}
+                {options.pattern.enabled &&
+                  options.pattern.type !== "none" &&
+                  !options.gradientWaves.enabled && (
+                    <PatternOverlay
+                      type={options.pattern.type}
+                      intensity={options.pattern.intensity}
+                      rotation={options.pattern.rotation}
+                      opacity={options.pattern.opacity}
                     />
-                  </div>
-                )}
+                  )}
 
                 {/* Gradient Waves background (replaces background theme visually; hides pattern) */}
-                {options.gradientWaves.enabled && (
-                  <div className="absolute inset-0" style={{ zIndex: 0 }}>
-                    <GradientWaves />
-                  </div>
-                )}
+                {options.gradientWaves.enabled && <GradientWavesBackground />}
 
                 {/* Centered screenshot holder */}
                 <div
@@ -601,7 +481,6 @@ export function ImageTool() {
                   <div
                     style={{
                       width: baseW,
-                      height: baseH,
                       willChange: "transform",
                       borderRadius: `${options.rounded}px`,
                       transition: "400ms cubic-bezier(0.03, 0.98, 0.52, 0.99)",
@@ -662,7 +541,9 @@ export function ImageTool() {
                             setUserResized(true);
                             // Imperatively trigger AI suggestion generation (prefer original blob)
                             queueMicrotask(() =>
-                              suggestionsRef.current?.generate({ blob: uploadedBlob })
+                              suggestionsRef.current?.generate({
+                                blob: uploadedBlob,
+                              })
                             );
                           }}
                         />
@@ -672,31 +553,20 @@ export function ImageTool() {
                 </div>
 
                 {/* Resize handle (height only) */}
-                <div
-                  tabIndex={0}
-                  role="slider"
-                  data-hide-on-export
-                  aria-label="Resize height"
-                  className="absolute bottom-2 right-2 size-4 rounded-full bg-white border-2 border-gray-300 flex items-center justify-center cursor-nwse-resize z-50 shadow-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
-                  style={{ touchAction: "none", userSelect: "none" }}
+                <ResizeHandle
+                  ariaValueNow={canvasHeight}
+                  ariaValueMin={200}
+                  ariaValueMax={containerHeight - 24}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     setIsResizing(true);
-                    setResizeStart({
-                      x: e.clientX,
-                      y: e.clientY,
-                      h: canvasHeight,
-                    });
+                    setResizeStart({ x: e.clientX, y: e.clientY, h: canvasHeight });
                     setUserResized(true);
                   }}
                   onTouchStart={(e) => {
                     if (e.touches.length === 1) {
                       setIsResizing(true);
-                      setResizeStart({
-                        x: e.touches[0]!.clientX,
-                        y: e.touches[0]!.clientY,
-                        h: canvasHeight,
-                      });
+                      setResizeStart({ x: e.touches[0]!.clientX, y: e.touches[0]!.clientY, h: canvasHeight });
                       setUserResized(true);
                     }
                   }}
@@ -708,7 +578,7 @@ export function ImageTool() {
               className={cn(
                 "flex flex-col items-center justify-center p-12 border bg-white border-stone-200 rounded-xl cursor-pointer hover:border-stone-300 transition-all duration-300 w-full"
               )}
-              style={{ height: GRID_PARENT_HEIGHT - 32 }}
+              style={{ height: containerHeight - 32 }}
               onClick={(e) => e.stopPropagation()}
             >
               <label
@@ -750,1005 +620,26 @@ export function ImageTool() {
         </div>
 
         {/* Right Controls */}
-        <div
-          className={cn(
-            "bg-stone-50 w-[20rem] rounded-lg min-h-full max-h-[80vh] flex flex-col border border-stone-200",
-            { hidden: !Boolean(blob.src) }
-          )}
-        >
-          <div className="flex-1 overflow-y-auto p-5">
-            {/* Replace the entire settings section with: */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Grip className="h-4 w-4 text-stone-500" />
-                  <span className="block font-medium text-xs text-stone-700">
-                    Image Settings
-                  </span>
-                </div>
-                <div className="flex items-center justify-end">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs text-stone-600"
-                    onClick={handleNew}
-                  >
-                    Reset all
-                  </Button>
-                </div>
-              </div>
-
-              <Separator className="bg-stone-200" />
-
-              {/* Frame Popover */}
-              <Popover>
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-1">
-                    <span className="block text-xs font-medium text-stone-700">
-                      Frame
-                    </span>
-                  </div>
-                  <PopoverTrigger asChild>
-                    <button
-                      aria-label="Edit frame"
-                      className="w-20 h-14 rounded-md border border-stone-300 flex items-center justify-center transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-stone-400 bg-white"
-                    >
-                      <div className="w-full h-full rounded-sm relative overflow-hidden bg-gradient-to-br from-rose-300 to-orange-400 flex items-center justify-center">
-                        {options.frame === "none" && (
-                          <div className="w-10 h-8 bg-white border border-stone-300 rounded-sm" />
-                        )}
-                        {options.frame === "arc" && (
-                          <div className="relative">
-                            <div
-                              className="w-10 h-8 bg-white border border-stone-300"
-                              style={{
-                                borderRadius: "5px",
-                                boxShadow:
-                                  "rgba(0, 0, 0, 0.15) 0px 4px 12px -2px",
-                                backgroundColor: "rgba(255, 255, 255, 0.314)",
-                                border: "1px solid rgba(255, 255, 255, 0.376)",
-                                padding: "2px",
-                              }}
-                            >
-                              <div className="w-full h-full bg-white rounded-[3px]" />
-                            </div>
-                          </div>
-                        )}
-                        {options.frame === "stack" && (
-                          <div className="relative">
-                            <div className="absolute">
-                              {Array.from({ length: 3 }).map((_, index) => {
-                                const reverseIndex = 3 - index - 1;
-                                const translateY = reverseIndex * -2.5;
-                                const scale = 1 - reverseIndex * 0.06;
-                                const opacity = Math.pow(0.7, reverseIndex);
-                                return (
-                                  <div
-                                    key={index}
-                                    className="absolute w-10"
-                                    style={{
-                                      height: "5px",
-                                      borderTopLeftRadius: "5px",
-                                      borderTopRightRadius: "5px",
-                                      backgroundColor: "#e5e7eb",
-                                      transform: `translateY(${translateY}px) scaleX(${scale})`,
-                                      transformOrigin: "top center",
-                                      opacity,
-                                      clipPath: "inset(0 0 calc(100% - 5px) 0)",
-                                    }}
-                                  />
-                                );
-                              })}
-                            </div>
-                            <div className="relative z-10">
-                              <div className="w-10 h-8 bg-white border border-stone-300 rounded-sm" />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  </PopoverTrigger>
-                </div>
-                <PopoverContent align="end" className="z-[9999] w-80">
-                  <span className="block font-medium text-sm text-stone-900 mb-2">
-                    Frame style
-                  </span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { type: "none" as const, label: "None" },
-                      { type: "arc" as const, label: "Arc" },
-                      { type: "stack" as const, label: "Stack" },
-                    ].map((frame) => (
-                      <div
-                        key={frame.type}
-                        className={cn(
-                          "cursor-pointer flex flex-col items-center gap-1.5"
-                        )}
-                        onClick={() => updateOptions({ frame: frame.type })}
-                      >
-                        <div
-                          className={cn(
-                            "w-full h-14 rounded-md border border-stone-200 flex items-center justify-center bg-gradient-to-br from-rose-300 to-orange-400 overflow-hidden",
-                            {
-                              "ring-2 ring-rose-400":
-                                frame.type === options.frame,
-                            }
-                          )}
-                        >
-                          {frame.type === "none" && (
-                            <div className="w-10 h-8 bg-white border border-stone-300 rounded-sm" />
-                          )}
-                          {frame.type === "arc" && (
-                            <div className="relative">
-                              <div
-                                className="w-10 h-8 bg-white border border-stone-300"
-                                style={{
-                                  borderRadius: "5px",
-                                  boxShadow:
-                                    "rgba(0, 0, 0, 0.15) 0px 4px 12px -2px",
-                                  backgroundColor: "rgba(255, 255, 255, 0.314)",
-                                  border:
-                                    "1px solid rgba(255, 255, 255, 0.376)",
-                                  padding: "2px",
-                                }}
-                              >
-                                <div className="w-full h-full bg-white rounded-[3px]" />
-                              </div>
-                            </div>
-                          )}
-                          {frame.type === "stack" && (
-                            <div className="relative">
-                              <div className="absolute">
-                                {Array.from({ length: 3 }).map((_, index) => {
-                                  const reverseIndex = 3 - index - 1;
-                                  const translateY = reverseIndex * -2.5;
-                                  const scale = 1 - reverseIndex * 0.06;
-                                  const opacity = Math.pow(0.7, reverseIndex);
-                                  return (
-                                    <div
-                                      key={index}
-                                      className="absolute w-10"
-                                      style={{
-                                        height: "5px",
-                                        borderTopLeftRadius: "5px",
-                                        borderTopRightRadius: "5px",
-                                        backgroundColor: "#e5e7eb",
-                                        transform: `translateY(${translateY}px) scaleX(${scale})`,
-                                        transformOrigin: "top center",
-                                        opacity,
-                                        clipPath:
-                                          "inset(0 0 calc(100% - 5px) 0)",
-                                      }}
-                                    />
-                                  );
-                                })}
-                              </div>
-                              <div className="relative z-10">
-                                <div className="w-10 h-8 bg-white border border-stone-300 rounded-sm" />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <span className="text-xs text-stone-600">
-                          {frame.label}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              {/* Background Popover */}
-              <Popover>
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-1">
-                    <span className="block text-xs font-medium text-stone-700">
-                      Background
-                    </span>
-                  </div>
-                  <PopoverTrigger asChild>
-                    <button
-                      aria-label="Edit background"
-                      className="size-8 rounded-md border border-stone-300 flex items-center justify-center transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-stone-400 bg-white"
-                    >
-                      <div
-                        className={cn(
-                          "size-7 rounded-sm",
-                          options.theme.includes("bg-gradient")
-                            ? options.theme
-                            : undefined
-                        )}
-                        style={{
-                          background: !options.theme.includes("bg-gradient")
-                            ? options.theme
-                            : undefined,
-                        }}
-                      />
-                    </button>
-                  </PopoverTrigger>
-                </div>
-                <PopoverContent align="end" className="z-[9999] w-80">
-                  <span className="block font-medium text-sm text-stone-900 mb-2">
-                    Background Presets
-                  </span>
-                  <div className="grid grid-cols-5 gap-2 mb-3">
-                    {gradientPresets.map((theme) => (
-                      <div
-                        key={theme}
-                        className={cn(
-                          "cursor-pointer w-full h-8 rounded-md border",
-                          theme,
-                          theme === options.theme && "ring-2 ring-rose-400"
-                        )}
-                        onClick={() =>
-                          updateOptions({
-                            theme,
-                            gradientWaves: { ...options.gradientWaves, enabled: false },
-                          })
-                        }
-                        aria-label={theme}
-                      />
-                    ))}
-                  </div>
-                  <span className="block font-medium text-sm text-stone-900 mb-2">
-                    Solid Colors
-                  </span>
-                  <div className="grid grid-cols-10 gap-2">
-                    {solidPresets.map((color) => (
-                      <button
-                        key={color}
-                        className={cn(
-                          "h-6 w-6 rounded-md border",
-                          options.theme === color
-                            ? "ring-2 ring-rose-400"
-                            : "ring-0"
-                        )}
-                        style={{ background: color }}
-                        aria-label={`Color ${color}`}
-                        onClick={() =>
-                          updateOptions({
-                            theme: color,
-                            gradientWaves: { ...options.gradientWaves, enabled: false },
-                          })
-                        }
-                      />
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              {/* Pattern Popover */}
-              <Popover>
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-1">
-                    <span className="block text-xs font-medium text-stone-700">
-                      Pattern
-                    </span>
-                  </div>
-                  <PopoverTrigger asChild>
-                    <button
-                      aria-label="Edit pattern overlay"
-                      className={cn(
-                        "size-8 rounded-md border border-stone-300 flex items-center justify-center transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-stone-400 bg-white",
-                        options.pattern.enabled ? "opacity-100" : "opacity-50"
-                      )}
-                    >
-                      <div className="size-7 rounded-sm relative overflow-hidden bg-white flex items-center justify-center">
-                        {options.pattern.enabled ? (
-                          <div
-                            className="w-full h-full relative"
-                            style={{
-                              backgroundImage: `url("/pattern/${options.pattern.type}.svg")`,
-                              backgroundRepeat: "repeat",
-                              backgroundSize:
-                                options.pattern.type === "none"
-                                  ? "25%"
-                                  : previewSizes[
-                                      options.pattern.type as Exclude<
-                                        PatternType,
-                                        "none"
-                                      >
-                                    ] || "25%",
-                              transform: `rotate(${options.pattern.rotation}deg) scale(2)`,
-                              imageRendering: "crisp-edges",
-                            }}
-                          />
-                        ) : (
-                          <span className="text-stone-400 text-xs">Off</span>
-                        )}
-                      </div>
-                    </button>
-                  </PopoverTrigger>
-                </div>
-                <PopoverContent align="end" className="z-[9999] w-80">
-                  <span className="block font-medium text-sm text-stone-900 mb-2">
-                    Pattern Options
-                  </span>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { type: "none", label: "None" },
-                      { type: "waves", label: "Waves" },
-                      { type: "dots", label: "Dots" },
-                      { type: "stripes", label: "Stripes" },
-                      { type: "zigzag", label: "Zigzag" },
-                      { type: "graphpaper", label: "Graph Paper" },
-                    ].map((pattern) => (
-                      <div
-                        key={pattern.type}
-                        className={cn(
-                          "cursor-pointer flex flex-col items-center gap-1.5"
-                        )}
-                        onClick={() =>
-                          updateOptions({
-                            pattern: {
-                              ...options.pattern,
-                              type: pattern.type as any,
-                              enabled: pattern.type !== "none",
-                            },
-                            gradientWaves:
-                              pattern.type !== "none"
-                                ? { ...options.gradientWaves, enabled: false }
-                                : options.gradientWaves,
-                          })
-                        }
-                      >
-                        <div
-                          className={cn(
-                            "w-full h-14 rounded-md border border-stone-200 flex items-center justify-center bg-white overflow-hidden",
-                            {
-                              "ring-2 ring-rose-400":
-                                pattern.type === options.pattern.type,
-                            }
-                          )}
-                        >
-                          {pattern.type !== "none" ? (
-                            <div
-                              className="w-full h-full relative"
-                              style={{
-                                backgroundImage: `url("/pattern/${pattern.type}.svg")`,
-                                backgroundRepeat: "repeat",
-                                backgroundSize: ["stripes", "zigzag"].includes(
-                                  pattern.type
-                                )
-                                  ? "25%"
-                                  : "85%",
-                                opacity: 0.3,
-                                transform: "rotate(45deg) scale(2)",
-                                imageRendering: "crisp-edges",
-                              }}
-                            />
-                          ) : null}
-                        </div>
-                        <span className="text-xs text-stone-600">
-                          {pattern.label}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    <EnhancedSlider
-                      disabled={options.pattern.type === "none"}
-                      label="Size"
-                      value={options.pattern.intensity}
-                      onChange={(v) =>
-                        updateOptions({
-                          pattern: { ...options.pattern, intensity: v },
-                        })
-                      }
-                      min={1}
-                      max={100}
-                      step={1}
-                      defaultValue={15}
-                      onReset={() =>
-                        updateOptions({
-                          pattern: { ...options.pattern, intensity: 15 },
-                        })
-                      }
-                    />
-                    <EnhancedSlider
-                      disabled={options.pattern.type === "none"}
-                      label="Rotation"
-                      value={options.pattern.rotation}
-                      onChange={(v) =>
-                        updateOptions({
-                          pattern: { ...options.pattern, rotation: v },
-                        })
-                      }
-                      min={0}
-                      max={360}
-                      step={1}
-                      unit="°"
-                      defaultValue={0}
-                      onReset={() =>
-                        updateOptions({
-                          pattern: { ...options.pattern, rotation: 0 },
-                        })
-                      }
-                    />
-                    <EnhancedSlider
-                      disabled={options.pattern.type === "none"}
-                      label="Opacity"
-                      value={options.pattern.opacity}
-                      onChange={(v) =>
-                        updateOptions({
-                          pattern: { ...options.pattern, opacity: v },
-                        })
-                      }
-                      min={0}
-                      max={35}
-                      step={1}
-                      defaultValue={6}
-                      onReset={() =>
-                        updateOptions({
-                          pattern: { ...options.pattern, opacity: 6 },
-                        })
-                      }
-                    />
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              {/* Gradient Waves Popover */}
-              <Popover>
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-1">
-                    <span className="block text-xs font-medium text-stone-700">
-                      Gradient Waves
-                    </span>
-                  </div>
-                  <PopoverTrigger asChild>
-                    <button
-                      aria-label="Edit gradient waves"
-                      className={cn(
-                        "size-8 rounded-md border border-stone-300 flex items-center justify-center transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-stone-400 bg-white",
-                        options.gradientWaves.enabled ? "opacity-100" : "opacity-50"
-                      )}
-                    >
-                      <div className="size-7 rounded-sm relative overflow-hidden bg-white flex items-center justify-center">
-                        <span className="text-[10px] text-stone-600">GW</span>
-                      </div>
-                    </button>
-                  </PopoverTrigger>
-                </div>
-                <PopoverContent align="end" className="z-[9999] w-80">
-                  <span className="block font-medium text-sm text-stone-900 mb-2">
-                    Gradient Waves
-                  </span>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm text-stone-700">Enabled</Label>
-                      <Switch
-                        aria-label="Toggle gradient waves"
-                        checked={options.gradientWaves.enabled}
-                        onCheckedChange={(checked) =>
-                          updateOptions({
-                            gradientWaves: { ...options.gradientWaves, enabled: checked },
-                            // Mutually exclusive: disabling Pattern when Waves enabled
-                            pattern: checked ? { ...options.pattern, enabled: false, type: "none" } : options.pattern,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm text-stone-700">Fill</Label>
-                      <Switch
-                        aria-label="Toggle fill mode"
-                        checked={options.gradientWaves.fill}
-                        onCheckedChange={(checked) =>
-                          updateOptions({
-                            gradientWaves: { ...options.gradientWaves, fill: checked },
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm text-stone-700">Crazyness</Label>
-                      <Switch
-                        aria-label="Toggle crazyness"
-                        checked={options.gradientWaves.crazyness}
-                        onCheckedChange={(checked) =>
-                          updateOptions({
-                            gradientWaves: { ...options.gradientWaves, crazyness: checked },
-                          })
-                        }
-                      />
-                    </div>
-                    <EnhancedSlider
-                      label="Lines"
-                      value={options.gradientWaves.lines}
-                      onChange={(v) =>
-                        updateOptions({
-                          gradientWaves: { ...options.gradientWaves, lines: Math.round(v) },
-                        })
-                      }
-                      min={5}
-                      max={50}
-                      step={1}
-                      defaultValue={20}
-                      onReset={() =>
-                        updateOptions({
-                          gradientWaves: { ...options.gradientWaves, lines: 20 },
-                        })
-                      }
-                    />
-                    <EnhancedSlider
-                      label="Amplitude X"
-                      value={options.gradientWaves.amplitudeX}
-                      onChange={(v) =>
-                        updateOptions({
-                          gradientWaves: { ...options.gradientWaves, amplitudeX: Math.round(v) },
-                        })
-                      }
-                      min={20}
-                      max={300}
-                      step={1}
-                      defaultValue={100}
-                      onReset={() =>
-                        updateOptions({
-                          gradientWaves: { ...options.gradientWaves, amplitudeX: 100 },
-                        })
-                      }
-                    />
-                    <EnhancedSlider
-                      label="Amplitude Y"
-                      value={options.gradientWaves.amplitudeY}
-                      onChange={(v) =>
-                        updateOptions({
-                          gradientWaves: { ...options.gradientWaves, amplitudeY: Math.round(v) },
-                        })
-                      }
-                      min={0}
-                      max={200}
-                      step={1}
-                      defaultValue={20}
-                      onReset={() =>
-                        updateOptions({
-                          gradientWaves: { ...options.gradientWaves, amplitudeY: 20 },
-                        })
-                      }
-                    />
-                    <EnhancedSlider
-                      label="Smoothness"
-                      value={options.gradientWaves.smoothness}
-                      onChange={(v) =>
-                        updateOptions({
-                          gradientWaves: { ...options.gradientWaves, smoothness: Number(v.toFixed(1)) },
-                        })
-                      }
-                      min={0.5}
-                      max={10}
-                      step={0.5}
-                      defaultValue={3}
-                      onReset={() =>
-                        updateOptions({
-                          gradientWaves: { ...options.gradientWaves, smoothness: 3 },
-                        })
-                      }
-                    />
-                    <EnhancedSlider
-                      label="Offset X"
-                      value={options.gradientWaves.offsetX}
-                      onChange={(v) =>
-                        updateOptions({
-                          gradientWaves: { ...options.gradientWaves, offsetX: Math.round(v) },
-                        })
-                      }
-                      min={-20}
-                      max={20}
-                      step={1}
-                      defaultValue={10}
-                      onReset={() =>
-                        updateOptions({
-                          gradientWaves: { ...options.gradientWaves, offsetX: 10 },
-                        })
-                      }
-                    />
-                    <div className="space-y-4">
-                      {/* Quick palettes + preview */}
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-stone-700">Quick palettes</Label>
-                        <div className="flex flex-wrap gap-2">
-                          {waveColorPresets.map((p, i) => (
-                            <button
-                              key={i}
-                              type="button"
-                              className="h-7 w-16 rounded border border-stone-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-stone-400"
-                              style={{
-                                backgroundImage: `linear-gradient(90deg, ${p.start}, ${p.end})`,
-                              }}
-                              title={p.name ?? `Preset ${i + 1}`}
-                              aria-label={p.name ?? `Preset ${i + 1}`}
-                              onClick={() => {
-                                const s = hexToHslTriplet(p.start)
-                                const e = hexToHslTriplet(p.end)
-                                updateOptions({
-                                  gradientWaves: { ...options.gradientWaves, start: s, end: e },
-                                })
-                              }}
-                            />
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="flex-1 h-2 rounded"
-                            style={{
-                              backgroundImage: `linear-gradient(90deg, ${hslToHex(options.gradientWaves.start.h, options.gradientWaves.start.s, options.gradientWaves.start.l)}, ${hslToHex(options.gradientWaves.end.h, options.gradientWaves.end.s, options.gradientWaves.end.l)})`,
-                            }}
-                            aria-label="Current gradient preview"
-                            role="img"
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8"
-                            title="Swap colors"
-                            aria-label="Swap colors"
-                            onClick={() =>
-                              updateOptions({
-                                gradientWaves: {
-                                  ...options.gradientWaves,
-                                  start: options.gradientWaves.end,
-                                  end: options.gradientWaves.start,
-                                },
-                              })
-                            }
-                          >
-                            <ArrowLeftRight className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8"
-                            title="Randomize palette"
-                            aria-label="Randomize palette"
-                            onClick={() => {
-                              const pick = waveColorPresets[Math.floor(Math.random() * waveColorPresets.length)]
-                              const s = hexToHslTriplet(pick.start)
-                              const e = hexToHslTriplet(pick.end)
-                              updateOptions({ gradientWaves: { ...options.gradientWaves, start: s, end: e } })
-                            }}
-                          >
-                            <Shuffle className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-stone-700">Start color</Label>
-                        <div className="flex items-center justify-between gap-2">
-                          <input
-                            type="color"
-                            className="h-8 w-8 rounded border border-stone-300 cursor-pointer"
-                            aria-label="Start color"
-                            value={hslToHex(
-                              options.gradientWaves.start.h,
-                              options.gradientWaves.start.s,
-                              options.gradientWaves.start.l
-                            )}
-                            onChange={(e) =>
-                              updateOptions({
-                                gradientWaves: {
-                                  ...options.gradientWaves,
-                                  start: hexToHslTriplet(e.target.value),
-                                },
-                              })
-                            }
-                          />
-                          <input
-                            type="text"
-                            className="h-8 w-28 rounded border border-stone-300 px-2 text-xs"
-                            aria-label="Start color hex"
-                            value={hslToHex(
-                              options.gradientWaves.start.h,
-                              options.gradientWaves.start.s,
-                              options.gradientWaves.start.l
-                            )}
-                            onChange={(e) => {
-                              const hex = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`
-                              const valid = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex)
-                              if (valid) {
-                                updateOptions({
-                                  gradientWaves: {
-                                    ...options.gradientWaves,
-                                    start: hexToHslTriplet(hex),
-                                  },
-                                })
-                              }
-                            }}
-                          />
-                        </div>
-                        <details className="mt-1">
-                          <summary className="text-xs text-stone-600 cursor-pointer select-none">Advanced (HSL)</summary>
-                          <div className="space-y-2 mt-2">
-                            <EnhancedSlider
-                              label="Hue"
-                              value={options.gradientWaves.start.h}
-                              onChange={(v) =>
-                                updateOptions({
-                                  gradientWaves: {
-                                    ...options.gradientWaves,
-                                    start: { ...options.gradientWaves.start, h: Math.round(v) },
-                                  },
-                                })
-                              }
-                              min={0}
-                              max={360}
-                              step={1}
-                              defaultValue={53}
-                            />
-                            <EnhancedSlider
-                              label="Saturation"
-                              value={options.gradientWaves.start.s}
-                              onChange={(v) =>
-                                updateOptions({
-                                  gradientWaves: {
-                                    ...options.gradientWaves,
-                                    start: { ...options.gradientWaves.start, s: Math.round(v) },
-                                  },
-                                })
-                              }
-                              min={0}
-                              max={100}
-                              step={1}
-                              unit="%"
-                              defaultValue={74}
-                            />
-                            <EnhancedSlider
-                              label="Lightness"
-                              value={options.gradientWaves.start.l}
-                              onChange={(v) =>
-                                updateOptions({
-                                  gradientWaves: {
-                                    ...options.gradientWaves,
-                                    start: { ...options.gradientWaves.start, l: Math.round(v) },
-                                  },
-                                })
-                              }
-                              min={0}
-                              max={100}
-                              step={1}
-                              unit="%"
-                              defaultValue={67}
-                            />
-                          </div>
-                        </details>
-                      </div>
-                      <Separator className="bg-stone-200" />
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-stone-700">End color</Label>
-                        <div className="flex items-center justify-between gap-2">
-                          <input
-                            type="color"
-                            className="h-8 w-8 rounded border border-stone-300 cursor-pointer"
-                            aria-label="End color"
-                            value={hslToHex(
-                              options.gradientWaves.end.h,
-                              options.gradientWaves.end.s,
-                              options.gradientWaves.end.l
-                            )}
-                            onChange={(e) =>
-                              updateOptions({
-                                gradientWaves: {
-                                  ...options.gradientWaves,
-                                  end: hexToHslTriplet(e.target.value),
-                                },
-                              })
-                            }
-                          />
-                          <input
-                            type="text"
-                            className="h-8 w-28 rounded border border-stone-300 px-2 text-xs"
-                            aria-label="End color hex"
-                            value={hslToHex(
-                              options.gradientWaves.end.h,
-                              options.gradientWaves.end.s,
-                              options.gradientWaves.end.l
-                            )}
-                            onChange={(e) => {
-                              const hex = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`
-                              const valid = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex)
-                              if (valid) {
-                                updateOptions({
-                                  gradientWaves: {
-                                    ...options.gradientWaves,
-                                    end: hexToHslTriplet(hex),
-                                  },
-                                })
-                              }
-                            }}
-                          />
-                        </div>
-                        <details className="mt-1">
-                          <summary className="text-xs text-stone-600 cursor-pointer select-none">Advanced (HSL)</summary>
-                          <div className="space-y-2 mt-2">
-                            <EnhancedSlider
-                              label="Hue"
-                              value={options.gradientWaves.end.h}
-                              onChange={(v) =>
-                                updateOptions({
-                                  gradientWaves: {
-                                    ...options.gradientWaves,
-                                    end: { ...options.gradientWaves.end, h: Math.round(v) },
-                                  },
-                                })
-                              }
-                              min={0}
-                              max={360}
-                              step={1}
-                              defaultValue={216}
-                            />
-                            <EnhancedSlider
-                              label="Saturation"
-                              value={options.gradientWaves.end.s}
-                              onChange={(v) =>
-                                updateOptions({
-                                  gradientWaves: {
-                                    ...options.gradientWaves,
-                                    end: { ...options.gradientWaves.end, s: Math.round(v) },
-                                  },
-                                })
-                              }
-                              min={0}
-                              max={100}
-                              step={1}
-                              unit="%"
-                              defaultValue={100}
-                            />
-                            <EnhancedSlider
-                              label="Lightness"
-                              value={options.gradientWaves.end.l}
-                              onChange={(v) =>
-                                updateOptions({
-                                  gradientWaves: {
-                                    ...options.gradientWaves,
-                                    end: { ...options.gradientWaves.end, l: Math.round(v) },
-                                  },
-                                })
-                              }
-                              min={0}
-                              max={100}
-                              step={1}
-                              unit="%"
-                              defaultValue={7}
-                            />
-                          </div>
-                        </details>
-                      </div>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              <EnhancedSlider
-                label="Size"
-                value={options.screenshotScale}
-                onChange={(v) => updateOptions({ screenshotScale: v })}
-                min={0.5}
-                max={1.5}
-                step={0.01}
-                unit="x"
-                defaultValue={0.9}
-                onReset={() => updateOptions({ screenshotScale: 0.9 })}
-              />
-              <EnhancedSlider
-                label="Rotation"
-                value={options.rotation}
-                onChange={(v) => updateOptions({ rotation: v })}
-                min={0}
-                max={360}
-                step={1}
-                unit="°"
-                defaultValue={0}
-                onReset={() => updateOptions({ rotation: 0 })}
-              />
-              <EnhancedSlider
-                label="Roundness"
-                value={options.rounded}
-                onChange={(v) => updateOptions({ rounded: v })}
-                min={0}
-                max={32}
-                step={1}
-                unit="px"
-                defaultValue={16}
-                onReset={() => updateOptions({ rounded: 16 })}
-              />
-              <EnhancedSlider
-                label="Shadow"
-                value={options.shadow}
-                onChange={(v) => updateOptions({ shadow: Math.round(v) })}
-                min={0}
-                max={4}
-                step={1}
-                defaultValue={2}
-                onReset={() => updateOptions({ shadow: 2 })}
-              />
-              <EnhancedSlider
-                label="Inset"
-                value={outlineSize}
-                onChange={setOutlineSize}
-                min={0}
-                max={100}
-                step={1}
-                defaultValue={8}
-                onReset={() => setOutlineSize(8)}
-              />
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-1">
-                  <span className="block text-xs font-medium text-stone-700">
-                    Inset color
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={outlineColor}
-                    onChange={(e) => setOutlineColor(e.target.value)}
-                    className="w-8 h-8 rounded-md border border-stone-300 cursor-pointer transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-stone-400"
-                    aria-label="Inset color"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs text-stone-600"
-                    onClick={() => setOutlineColor("#ffffff")}
-                  >
-                    Reset
-                  </Button>
-                </div>
-              </div>
-
-              <Separator className="bg-stone-200" />
-
-              {/* Browser bar style */}
-              <div className="flex items-center justify-between">
-                <Label className="text-sm text-stone-700">Browser bar</Label>
-                <div className="flex items-center gap-2">
-                  <select aria-label="Browser bar style"
-                    className="h-8 rounded-md border border-stone-300 bg-white px-2 text-sm"
-                    value={options.browserBar}
-                    onChange={(e) =>
-                      updateOptions({
-                        browserBar: e.target.value as Options["browserBar"],
-                      })
-                    }
-                  >
-                    <option value="hidden">Hidden</option>
-                    <option value="light">Light</option>
-                    <option value="dark">Dark</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="p-5 border-t border-stone-200">
-            <div className="flex gap-3 flex-wrap">
-              <Button
-                variant="outline"
-                className="h-11 bg-transparent"
-                onClick={handleNew}
-              >
-                New
-              </Button>
-              <Button
-                className="flex-1 h-11"
-                onClick={() => exportOrCopy("download")}
-              >
-                Export PNG (2x)
-              </Button>
-              <Button
-                variant="secondary"
-                className="h-11"
-                onClick={() => exportOrCopy("copy")}
-              >
-                Copy Image
-              </Button>
-            </div>
-          </div>
-        </div>
+        <Sidebar
+          visible={Boolean(blob.src)}
+          options={options}
+          outlineSize={outlineSize}
+          outlineColor={outlineColor}
+          updateOptions={updateOptions}
+          setOutlineSize={setOutlineSize}
+          setOutlineColor={setOutlineColor}
+          handleNew={handleNew}
+          exportOrCopy={exportOrCopy}
+          gradientTriggerRef={gradientTriggerRef as React.RefObject<HTMLButtonElement>}
+          gradientContentRef={gradientContentRef as React.RefObject<HTMLDivElement>}
+        />
 
         {/* Floating Suggestions Dock */}
-  <FloatingSuggestionsDock ref={suggestionsRef} imageBlob={uploadedBlob} isVisible={Boolean(blob.src)} />
+        <FloatingSuggestionsDock
+          ref={suggestionsRef}
+          imageBlob={uploadedBlob}
+          isVisible={Boolean(blob.src)}
+        />
       </div>
     </div>
   );

@@ -1,0 +1,48 @@
+.frame-arc-inner {
+  border-radius: 5px;
+  box-shadow: rgba(0, 0, 0, 0.15) 0px 4px 12px -2px;
+  background-color: rgba(255, 255, 255, 0.314);
+  border: 1px solid rgba(255, 255, 255, 0.376);
+  padding: 2px;
+}
+
+.stack-layer {
+  height: 5px;
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  background-color: #e5e7eb; /* stone-200 */
+  clip-path: inset(0 0 calc(100% - 5px) 0);
+  transform-origin: top center;
+}
+
+.stack-layer-0 { /* backmost */
+  transform: translateY(-5px) scaleX(0.88);
+  opacity: 0.49;
+}
+
+.stack-layer-1 {
+  transform: translateY(-2.5px) scaleX(0.94);
+  opacity: 0.7;
+}
+
+.stack-layer-2 {
+  transform: translateY(0) scaleX(1);
+  opacity: 1;
+}
+
+.pattern-tile {
+  background-repeat: repeat;
+  /* Better cross-browser crisp rendering */
+  image-rendering: -webkit-optimize-contrast;
+  transform: rotate(45deg) scale(2);
+}
+
+.bg-size-25 { background-size: 25%; }
+.bg-size-85 { background-size: 85%; }
+
+/* Pattern background image helpers */
+.pattern-waves { background-image: url('/pattern/waves.svg'); }
+.pattern-dots { background-image: url('/pattern/dots.svg'); }
+.pattern-stripes { background-image: url('/pattern/stripes.svg'); }
+.pattern-zigzag { background-image: url('/pattern/zigzag.svg'); }
+.pattern-graphpaper { background-image: url('/pattern/graphpaper.svg'); }
