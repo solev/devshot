@@ -22,8 +22,6 @@ export type SidebarProps = {
   setOutlineColor: (color: string) => void;
   handleNew: () => void;
   exportOrCopy: (target: "download" | "copy") => void;
-  gradientTriggerRef: React.RefObject<HTMLButtonElement>;
-  gradientContentRef: React.RefObject<HTMLDivElement>;
 };
 
 export function Sidebar({
@@ -36,8 +34,6 @@ export function Sidebar({
   setOutlineColor,
   handleNew,
   exportOrCopy,
-  gradientTriggerRef,
-  gradientContentRef,
 }: SidebarProps) {
   return (
     <div
@@ -77,12 +73,7 @@ export function Sidebar({
             </div>
           </PatternPicker>
 
-          <GradientWavesPanel
-            options={options}
-            onChange={updateOptions}
-            triggerRef={gradientTriggerRef}
-            contentRef={gradientContentRef}
-          />
+          <GradientWavesPanel options={options} onChange={updateOptions} />
 
           <EnhancedSlider label="Size" value={options.screenshotScale} onChange={(v) => updateOptions({ screenshotScale: v })} min={0.5} max={1.5} step={0.01} unit="x" defaultValue={0.9} onReset={() => updateOptions({ screenshotScale: 0.9 })} />
           <EnhancedSlider label="Rotation" value={options.rotation} onChange={(v) => updateOptions({ rotation: v })} min={0} max={360} step={1} unit="°" defaultValue={0} onReset={() => updateOptions({ rotation: 0 })} />

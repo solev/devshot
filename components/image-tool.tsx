@@ -68,44 +68,8 @@ export function ImageTool() {
   const [userResized, setUserResized] = React.useState<boolean>(false);
   // imageElement removed; we only track the uploaded blob
   const suggestionsRef = React.useRef<FloatingSuggestionsDockHandle>(null);
-  // Refs and state for auto-sizing the Gradient Waves popover
-  const gradientTriggerRef = React.useRef<HTMLButtonElement | null>(null);
-  const gradientContentRef = React.useRef<HTMLDivElement | null>(null);
+  // Gradient Waves popover auto-size handled within component
 
-  // Auto-calc popover max-height so it can grow to the available viewport space
-  React.useEffect(() => {
-    const content = gradientContentRef.current;
-    if (!content) return;
-    const margin = 48; // px reserved for padding/header/footer
-    const update = () => {
-      const viewportH = window.innerHeight;
-      const trigRect = gradientTriggerRef.current?.getBoundingClientRect();
-      const spaceBelow = trigRect
-        ? Math.max(0, viewportH - trigRect.bottom - margin)
-        : viewportH - margin;
-      const spaceAbove = trigRect ? Math.max(0, trigRect.top - margin) : viewportH - margin;
-      const max = Math.max(spaceBelow, spaceAbove);
-      const finalMax = Math.max(160, max); // ensure reasonable minimum
-      content.style.maxHeight = `${finalMax}px`;
-      content.style.overflowY = "auto";
-    };
-    update();
-    window.addEventListener("resize", update);
-    window.addEventListener("orientationchange", update);
-    window.addEventListener("scroll", update, { passive: true });
-    return () => {
-      window.removeEventListener("resize", update);
-      window.removeEventListener("orientationchange", update);
-      window.removeEventListener("scroll", update);
-      // cleanup inline styles
-      try {
-        if (content) {
-          content.style.maxHeight = "";
-          content.style.overflowY = "";
-        }
-      } catch {}
-    };
-  }, [options.gradientWaves.enabled]);
 
   // Keep canvas full width of the grid parent; width adjusts on window/container resize.
   React.useEffect(() => {
@@ -620,7 +584,7 @@ export function ImageTool() {
         </div>
 
         {/* Right Controls */}
-        <Sidebar
+  <Sidebar
           visible={Boolean(blob.src)}
           options={options}
           outlineSize={outlineSize}
@@ -630,8 +594,6 @@ export function ImageTool() {
           setOutlineColor={setOutlineColor}
           handleNew={handleNew}
           exportOrCopy={exportOrCopy}
-          gradientTriggerRef={gradientTriggerRef as React.RefObject<HTMLButtonElement>}
-          gradientContentRef={gradientContentRef as React.RefObject<HTMLDivElement>}
         />
 
         {/* Floating Suggestions Dock */}

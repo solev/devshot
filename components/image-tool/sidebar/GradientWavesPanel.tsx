@@ -11,17 +11,20 @@ import { Separator } from "@/components/ui/separator";
 import { hslToHex, hexToHslTriplet } from "@/lib/color";
 import { waveColorPresets } from "@/lib/config/presets";
 import type { Options } from "@/lib/store";
+import { useAutoPopoverMaxHeight } from "@/lib/hooks/useAutoPopoverMaxHeight";
 
 export type GradientWavesPanelProps = {
   options: Options;
   onChange: (updates: Partial<Options>) => void;
-  triggerRef: React.RefObject<HTMLButtonElement>;
-  contentRef: React.RefObject<HTMLDivElement>;
 };
 
-export function GradientWavesPanel({ options, onChange, triggerRef, contentRef }: GradientWavesPanelProps) {
+export function GradientWavesPanel({ options, onChange }: GradientWavesPanelProps) {
+  const [open, setOpen] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const contentRef = React.useRef<HTMLDivElement | null>(null);
+  useAutoPopoverMaxHeight(triggerRef, contentRef, [open, options.gradientWaves.enabled]);
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-1">
           <span className="block text-xs font-medium text-stone-700">Gradient Waves</span>

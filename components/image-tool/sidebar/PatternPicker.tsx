@@ -2,6 +2,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import styles from "./sidebar.module.css";
+import { useAutoPopoverMaxHeight } from "@/lib/hooks/useAutoPopoverMaxHeight";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Options } from "@/lib/store";
 
@@ -17,14 +18,18 @@ const patternOptions = [
 export type PatternState = Options["pattern"];
 
 export function PatternPicker({ pattern, onPick, children }: { pattern: PatternState; onPick: (type: PatternState["type"]) => void; children?: React.ReactNode }) {
+  const [open, setOpen] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const contentRef = React.useRef<HTMLDivElement | null>(null);
+  useAutoPopoverMaxHeight(triggerRef, contentRef, [open, pattern.enabled]);
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-1">
           <span className="block text-xs font-medium text-stone-700">Pattern</span>
         </div>
         <PopoverTrigger asChild>
-          <button aria-label="Edit pattern overlay" className={cn("size-8 rounded-md border border-stone-300 flex items-center justify-center transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-stone-400 bg-white", pattern.enabled ? "opacity-100" : "opacity-50")}>
+          <button ref={triggerRef} aria-label="Edit pattern overlay" className={cn("size-8 rounded-md border border-stone-300 flex items-center justify-center transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-stone-400 bg-white", pattern.enabled ? "opacity-100" : "opacity-50")}>
             <div className="size-7 rounded-sm relative overflow-hidden bg-white flex items-center justify-center">
               {pattern.enabled ? (
                 <div className={cn(
@@ -44,6 +49,7 @@ export function PatternPicker({ pattern, onPick, children }: { pattern: PatternS
         </PopoverTrigger>
       </div>
       <PopoverContent align="end" className="z-[9999] w-80">
+        <div ref={contentRef} className="w-full overflow-y-auto">
         <span className="block font-medium text-sm text-stone-900 mb-2">Pattern Options</span>
         <div className="grid grid-cols-3 gap-2">
           {patternOptions.map((p) => (
@@ -66,6 +72,7 @@ export function PatternPicker({ pattern, onPick, children }: { pattern: PatternS
           ))}
         </div>
         {children}
+        </div>
       </PopoverContent>
     </Popover>
   );
