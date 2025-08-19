@@ -17,7 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <script defer src="http://umami.coolify.thirty.agency/script.js" data-website-id="8d1a5290-1a97-44a5-98d2-283df3bb72ec"></script>
+        <script defer src="https://umami.coolify.thirty.agency/script.js" data-website-id="8d1a5290-1a97-44a5-98d2-283df3bb72ec"></script>
         <style>{`
 html {
   font-family: ${GeistSans.style.fontFamily};
