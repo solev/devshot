@@ -504,11 +504,11 @@ export function ImageTool() {
                             setBlob((prev) => ({ ...prev, w: nw, h: nh }));
                             setUserResized(true);
                             // Imperatively trigger AI suggestion generation (prefer original blob)
-                            queueMicrotask(() =>
-                              suggestionsRef.current?.generate({
-                                blob: uploadedBlob,
-                              })
-                            );
+                            // queueMicrotask(() =>
+                            //   suggestionsRef.current?.generate({
+                            //     blob: uploadedBlob,
+                            //   })
+                            // );
                           }}
                         />
                       </div>
@@ -597,11 +597,11 @@ export function ImageTool() {
         />
 
         {/* Floating Suggestions Dock */}
-        <FloatingSuggestionsDock
+        {/* <FloatingSuggestionsDock
           ref={suggestionsRef}
           imageBlob={uploadedBlob}
           isVisible={Boolean(blob.src)}
-        />
+        /> */}
       </div>
     </div>
   );
