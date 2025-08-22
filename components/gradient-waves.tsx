@@ -10,6 +10,28 @@ export function GradientWaves() {
   const gw = options.gradientWaves;
 
   const ref = React.useRef<SVGSVGElement | null>(null);
+  const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
+
+  // Track size changes
+  React.useEffect(() => {
+    const svgEl = ref.current;
+    if (!svgEl) return;
+
+    const updateSize = () => {
+      const newWidth = svgEl.clientWidth || svgEl.parentElement?.clientWidth || 1200;
+      const newHeight = svgEl.clientHeight || svgEl.parentElement?.clientHeight || 800;
+      setDimensions({ width: newWidth, height: newHeight });
+    };
+
+    updateSize();
+    
+    const resizeObserver = new ResizeObserver(updateSize);
+    resizeObserver.observe(svgEl);
+    
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   React.useEffect(() => {
   const svgEl = ref.current;
@@ -21,8 +43,8 @@ export function GradientWaves() {
 
     if (!gw.enabled) return;
 
-  const winW = s.clientWidth || s.parentElement?.clientWidth || 1200;
-  const winH = s.clientHeight || s.parentElement?.clientHeight || 800;
+  const winW = dimensions.width || svgEl.clientWidth || svgEl.parentElement?.clientWidth || 1200;
+  const winH = dimensions.height || svgEl.clientHeight || svgEl.parentElement?.clientHeight || 800;
 
     const overflow = Math.abs(gw.lines * gw.offsetX);
 
@@ -115,7 +137,7 @@ export function GradientWaves() {
 
   createPath(root, Colors[i + 1]);
     }
-  }, [options]);
+  }, [options, dimensions]);
 
   if (!gw.enabled) return null;
 
