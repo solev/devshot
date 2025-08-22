@@ -3,8 +3,19 @@
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ImageTool } from "@/components/image-tool"
+import { useImageStore } from "@/lib/store";
+import { LandingPage } from "@/components/landing-page";
+import { useImagePaste } from "@/hooks/use-image-paste";
 
 export default function Page() {
+  const { isBlobAdded } = useImageStore();
+  
+  // Global paste handling
+  useImagePaste();
+
+  if(!isBlobAdded()) 
+    return <LandingPage />;
+
   return (
     <SidebarProvider defaultOpen>
       <AppSidebar />

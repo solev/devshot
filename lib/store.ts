@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import type { ScreenshotBlob } from "./types/image-tool"
 
 export type PatternType = "waves" | "dots" | "stripes" | "zigzag" | "graphpaper" | "none"
 
@@ -56,6 +57,8 @@ interface ImageStore {
   // State
   options: Options
   selectedPreset: string
+  blob: ScreenshotBlob
+  uploadedBlob: Blob | null
 
   // Actions
   updateOptions: (updates: Partial<Options>) => void
@@ -63,6 +66,13 @@ interface ImageStore {
   setOutlineColor: (color: string) => void
   applyPreset: (presetId: string, settings: PresetSettings) => void
   resetToDefaults: () => void
+  setBlob: (blob: ScreenshotBlob) => void
+  updateBlobDimensions: (w: number, h: number) => void
+  setUploadedBlob: (blob: Blob | null) => void
+  clearBlobs: () => void
+  
+  // Getters
+  isBlobAdded: () => boolean
 }
 
 const DEFAULT_OUTLINE_SIZE = 8
@@ -99,6 +109,8 @@ export const useImageStore = create<ImageStore>()((set, get) => ({
   // Initial state
   options: DEFAULT_OPTIONS,
   selectedPreset: "",
+  blob: { src: "" },
+  uploadedBlob: null,
 
   // Actions
   updateOptions: (updates) =>
@@ -135,11 +147,40 @@ export const useImageStore = create<ImageStore>()((set, get) => ({
       selectedPreset: presetId,
     })),
 
+  setBlob: (blob) =>
+    set(() => ({
+      blob,
+    })),
+
+  updateBlobDimensions: (w: number, h: number) =>
+    set((state) => ({
+      blob: { ...state.blob, w, h },
+    })),
+
+  setUploadedBlob: (uploadedBlob) =>
+    set(() => ({
+      uploadedBlob,
+    })),
+
+  clearBlobs: () =>
+    set(() => ({
+      blob: { src: "" },
+      uploadedBlob: null,
+    })),
+
   resetToDefaults: () =>
     set(() => ({
       options: DEFAULT_OPTIONS,
       selectedPreset: "",
+      blob: { src: "" },
+      uploadedBlob: null,
     })),
+
+  // Getters
+  isBlobAdded: () => {
+    const state = get();
+    return Boolean(state.blob.src);
+  },
 }))
 
 export type { Options, PresetSettings }

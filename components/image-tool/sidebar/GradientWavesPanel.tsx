@@ -12,6 +12,7 @@ import { hslToHex, hexToHslTriplet } from "@/lib/color";
 import { waveColorPresets } from "@/lib/config/presets";
 import type { Options } from "@/lib/store";
 import { useAutoPopoverMaxHeight } from "@/lib/hooks/useAutoPopoverMaxHeight";
+import { GradientWavesPreview } from "@/components/gradient-waves-preview";
 
 export type GradientWavesPanelProps = {
   options: Options;
@@ -32,7 +33,12 @@ export function GradientWavesPanel({ options, onChange }: GradientWavesPanelProp
         <PopoverTrigger asChild>
           <button aria-label="Edit gradient waves" ref={triggerRef} className={cn("size-8 rounded-md border border-stone-300 flex items-center justify-center transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-stone-400 bg-white", options.gradientWaves.enabled ? "opacity-100" : "opacity-50")}>
             <div className="size-7 rounded-sm relative overflow-hidden bg-white flex items-center justify-center">
-              <span className="text-[10px] text-stone-600">GW</span>
+              <GradientWavesPreview 
+                gradientWaves={options.gradientWaves} 
+                width={28} 
+                height={28}
+                className="rounded-sm"
+              />
             </div>
           </button>
         </PopoverTrigger>

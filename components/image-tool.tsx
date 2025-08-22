@@ -38,7 +38,6 @@ import { Sidebar } from "@/components/image-tool/sidebar/Sidebar";
 export function ImageTool() {
   const wrapperRef = React.useRef<HTMLDivElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   // Get state and actions from Zustand store
@@ -48,13 +47,17 @@ export function ImageTool() {
     setOutlineSize,
     setOutlineColor,
     resetToDefaults,
+    blob,
+    uploadedBlob,
+    setBlob,
+    updateBlobDimensions,
+    setUploadedBlob,
+    clearBlobs,
   } = useImageStore();
 
   const outlineSize = options.outlineSize;
   const outlineColor = options.outlineColor;
 
-  const [blob, setBlob] = React.useState<ScreenshotBlob>({ src: "" });
-  const [uploadedBlob, setUploadedBlob] = React.useState<Blob | null>(null);
   const [canvasWidth, setCanvasWidth] = React.useState<number>(800);
   const [containerHeight, setContainerHeight] = React.useState<number>(800);
   const [canvasHeight, setCanvasHeight] = React.useState<number>(380);
@@ -123,53 +126,6 @@ export function ImageTool() {
   }, [isResizing, resizeStart, containerHeight]);
 
   // Paste to upload
-  React.useEffect(() => {
-    const handlePaste = (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (!item) continue;
-        if (item.kind === "file" && item.type.includes("image")) {
-          const file = item.getAsFile();
-          if (!file) continue;
-          const reader = new FileReader();
-          reader.onload = (e2) => {
-            if (e2.target && e2.target.result) {
-              setBlob({ src: e2.target.result as string });
-              setUploadedBlob(file);
-              // Auto-fit canvas height to image aspect if user hasn't resized yet
-              try {
-                const url = URL.createObjectURL(file);
-                const img = new Image();
-                img.onload = () => {
-                  const nw = img.naturalWidth || img.width;
-                  const nh = img.naturalHeight || img.height;
-                  setBlob((prev) => ({ ...prev, w: nw, h: nh }));
-                  if (!userResized && containerRef.current) {
-                    const rect = containerRef.current.getBoundingClientRect();
-                    const maxH = GRID_PARENT_HEIGHT - 16;
-                    const aspect = nh > 0 && nw > 0 ? nh / nw : 9 / 16;
-                    const idealH = Math.round(rect.width * aspect);
-                    const clampedH = Math.max(200, Math.min(maxH, idealH));
-                    setCanvasHeight(clampedH);
-                  }
-                  URL.revokeObjectURL(url);
-                };
-                img.onerror = () => URL.revokeObjectURL(url);
-                img.src = url;
-              } catch {}
-            }
-          };
-          reader.readAsDataURL(file);
-          break;
-        }
-      }
-    };
-    document.addEventListener("paste", handlePaste);
-    return () => document.removeEventListener("paste", handlePaste);
-  }, []);
-
   async function exportOrCopy(target: "download" | "copy") {
     try {
       const element = wrapperRef.current;
@@ -230,72 +186,13 @@ export function ImageTool() {
     }
   }
 
-  const onPaste = (event: React.ClipboardEvent | React.DragEvent | Event) => {
-    let items: DataTransferItemList | FileList | null = null;
-    if ((event as React.ClipboardEvent).clipboardData) {
-      items = (event as React.ClipboardEvent).clipboardData.items;
-    } else if ((event as React.DragEvent).dataTransfer) {
-      items = (event as React.DragEvent).dataTransfer.files;
-    } else if ((event as any).target && (event as any).target.files) {
-      items = (event as any).target.files;
-    }
-    if (!items) return;
-    for (let i = 0; i < (items as any).length; i++) {
-      const item = (items as any)[i];
-      if (
-        (item as DataTransferItem).kind === "file" ||
-        ((item as File).type && (item as File).type.includes("image"))
-      ) {
-        const file = (item as DataTransferItem).kind
-          ? (item as DataTransferItem).getAsFile()
-          : (item as File);
-        if (!file) continue;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (e.target && e.target.result) {
-            setBlob({ src: e.target.result as string });
-            setUploadedBlob(file);
-            // Try to infer and set canvas height to match aspect ratio once file metadata is available
-            // We'll attempt to read intrinsic dimensions efficiently using Image without drawing to canvas.
-            try {
-              const url = URL.createObjectURL(file);
-              const img = new Image();
-              img.onload = () => {
-                const nw = img.naturalWidth || img.width;
-                const nh = img.naturalHeight || img.height;
-                // Save dimensions for layout calculation
-                setBlob((prev) => ({ ...prev, w: nw, h: nh }));
-                // Auto-set height only if user hasn't manually resized yet
-                if (!userResized && containerRef.current) {
-                  const rect = containerRef.current.getBoundingClientRect();
-                  const maxH = GRID_PARENT_HEIGHT - 16; // match preview container max height
-                  const aspect = nh > 0 && nw > 0 ? nh / nw : 9 / 16;
-                  const idealH = Math.round(rect.width * aspect);
-                  const clampedH = Math.max(200, Math.min(maxH, idealH));
-                  setCanvasHeight(clampedH);
-                }
-                URL.revokeObjectURL(url);
-              };
-              img.onerror = () => URL.revokeObjectURL(url);
-              img.src = url;
-            } catch {}
-          }
-        };
-        reader.readAsDataURL(file);
-        break;
-      }
-    }
-  };
-
-  // BrowserBar now provided by components/image-tool/preview/BrowserBar
-
-  const isGradient = options.theme.includes("bg-gradient");
-
   // Helper to compute effective frame size and scale
   const [wrapperSize, setWrapperSize] = React.useState<{
     w: number;
     h: number;
   }>({ w: 0, h: 0 });
+
+  const isGradient = options.theme.includes("bg-gradient");
 
   React.useEffect(() => {
     if (!wrapperRef.current) return;
@@ -339,10 +236,9 @@ export function ImageTool() {
   const effectiveScale = Math.min(options.screenshotScale, maxFitScale);
 
   function handleNew() {
-    setBlob({ src: "" });
+    clearBlobs();
     resetToDefaults();
     setUserResized(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   return (
@@ -371,10 +267,10 @@ export function ImageTool() {
             e.preventDefault();
             e.stopPropagation();
             setIsDragging(false);
-            onPaste(e);
+            // Drop handling is now done globally via useImagePaste hook
           }}
           onClick={() => {
-            if (!blob.src && fileInputRef.current) fileInputRef.current.click();
+            // File selection is now handled globally via the landing page
           }}
           aria-label="Canvas grid area"
         >
@@ -501,14 +397,14 @@ export function ImageTool() {
                             const target = e.currentTarget;
                             const nw = target.naturalWidth;
                             const nh = target.naturalHeight;
-                            setBlob((prev) => ({ ...prev, w: nw, h: nh }));
+                            updateBlobDimensions(nw, nh);
                             setUserResized(true);
                             // Imperatively trigger AI suggestion generation (prefer original blob)
-                            // queueMicrotask(() =>
-                            //   suggestionsRef.current?.generate({
-                            //     blob: uploadedBlob,
-                            //   })
-                            // );
+                            queueMicrotask(() =>
+                              suggestionsRef.current?.generate({
+                                blob: uploadedBlob,
+                              })
+                            );
                           }}
                         />
                       </div>
@@ -570,14 +466,6 @@ export function ImageTool() {
                     <span>to paste</span>
                   </div>
                 </div>
-                <input
-                  ref={fileInputRef}
-                  id="screenshot-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={onPaste as any}
-                />
               </label>
             </div>
           )}
@@ -597,11 +485,11 @@ export function ImageTool() {
         />
 
         {/* Floating Suggestions Dock */}
-        {/* <FloatingSuggestionsDock
+        <FloatingSuggestionsDock
           ref={suggestionsRef}
           imageBlob={uploadedBlob}
           isVisible={Boolean(blob.src)}
-        /> */}
+        />
       </div>
     </div>
   );
